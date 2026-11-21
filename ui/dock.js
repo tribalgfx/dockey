@@ -14,7 +14,7 @@ const el = (tag, cls, html) => {
 };
 
 const vertical = () => document.documentElement.dataset.orient === 'v';
-const state = { config: null, groups: [], maximized: false, stats: null, media: null, weather: null, cpu: [], events: [], calErrors: [], tray: [] };
+const state = { config: null, groups: [], maximized: false, stats: null, media: null, weather: null, cpu: [], events: [], calErrors: [], tray: [], update: null };
 
 // Een pictogram uit het systeemvak; klikken gaan door naar de app.
 function trayButton(item) {
@@ -54,6 +54,7 @@ function markOpen(id) {
 
 const dockMenu = () => ({
   items: [
+    ...(state.update ? [{ label: t('update.menu', state.update.version), icon: 'down', bold: true, emit: 'open-update' }, { sep: true }] : []),
     { label: t('menu.settings'), icon: 'gear', emit: 'open-settings' },
     { label: t('menu.taskManager'), icon: 'chart', action: { cmd: 'launch', args: { target: 'taskmgr.exe' } } },
     { label: t('menu.taskView'), icon: 'windows', action: { cmd: 'send_keys', args: { name: 'taskview' } } },
@@ -673,7 +674,7 @@ function setConfig(config) {
     JSON.stringify(config.customWidgets) !== JSON.stringify(state.config.customWidgets);
   state.config = config;
   const languageChanged = applyLook(config) && !first;
-  start.title = t('start');
+  markUpdate();
   applyMaximized();
   if (languageChanged) renderApps(); // titels van de apps
   if (widgetsChanged || languageChanged) buildWidgets();
@@ -707,6 +708,13 @@ start.dataset.popup = 'dock-menu';
 start.addEventListener('click', () => invoke('send_keys', { name: 'start' }));
 
 const openSettings = () => openPopup('settings', 'settings', {}, start);
+const openUpdate = () => openPopup('update', 'update', {}, start);
+
+/** Staat er een nieuwe versie klaar? Dan een stipje op de startknop. */
+function markUpdate() {
+  start.classList.toggle('has-update', Boolean(state.update));
+  start.title = state.update ? t('update.available', state.update.version) : t('start');
+}
 // Klik op een lege plek van de balk: een open paneel gaat dicht. (De balk pakt
 // zelf geen focus, dus het paneel merkt die klik niet vanzelf.)
 document.addEventListener('pointerdown', (e) => {
@@ -731,6 +739,11 @@ await Promise.all([
   }),
   listen('popup:closed', () => markOpen(null)),
   listen('open-settings', openSettings),
+  listen('open-update', openUpdate),
+  listen('update', (update) => {
+    state.update = update;
+    markUpdate();
+  }),
   listen('agenda:request', shareAgenda),
   listen('tray', (items) => {
     state.tray = items;
@@ -740,6 +753,7 @@ await Promise.all([
 
 const initial = await invoke('get_initial');
 setAcrylicSupport(initial.acrylic);
+state.update = initial.update ?? null;
 setSystemLanguage(initial.systemLanguage);
 setConfig(initial.config);
 trackBackdrop($('#dock'));

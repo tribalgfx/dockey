@@ -65,6 +65,8 @@ Name: "{autoprograms}\Dockey"; Filename: "{app}\dockey.exe"
 
 [Run]
 Filename: "{app}\dockey.exe"; Description: "{cm:StartNow}"; Flags: nowait postinstall skipifsilent
+; Bijwerken vanuit Dockey zelf start de installer met /SILENT /STARTAFTER=1: daarna Dockey weer starten.
+Filename: "{app}\dockey.exe"; Flags: nowait; Check: StartAfterUpdate
 
 [Code]
 const
@@ -74,6 +76,11 @@ const
     mutex, die van de single-instance-plug-in van Tauri (identifier uit tauri.conf.json plus "-sim"). }
   RunningMutexes = 'Dockey.Running,nl.donkie.dockey-sim';
   WebView2Key = 'Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}';
+
+function StartAfterUpdate: Boolean;
+begin
+  Result := WizardSilent and (ExpandConstant('{param:STARTAFTER|0}') = '1');
+end;
 
 function IsRunning: Boolean;
 begin

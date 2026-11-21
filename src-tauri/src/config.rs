@@ -97,6 +97,10 @@ pub struct Config {
     pub autostart: bool,
     pub clock24: bool,
     pub show_seconds: bool,
+    /// Transparantie van de balk in procenten (0 = zoals het thema, tot 80).
+    pub transparency: u32,
+    /// Eens per dag bij GitHub kijken of er een nieuwe versie is.
+    pub update_check: bool,
     pub widgets: Widgets,
     pub custom_widgets: Vec<CustomWidget>,
     /// Volgorde van de widgets (sleutels als "clock" of "custom:<id>"); leeg =
@@ -124,6 +128,8 @@ impl Default for Config {
             autostart: false,
             clock24: true,
             show_seconds: false,
+            transparency: 0,
+            update_check: true,
             widgets: Widgets::default(),
             custom_widgets: Vec::new(),
             widget_order: Vec::new(),

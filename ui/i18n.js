@@ -199,6 +199,30 @@ const nl = {
   'wx.rainChance': (pct) => `${pct}% kans op neerslag`,
   'wx.sun': (rise, set) => `Zon op ${rise} · onder ${set}`,
 
+  // Updates
+  'update.menu': (v) => `Bijwerken naar versie ${v}`,
+  'update.available': (v) => `Start\nVersie ${v} van Dockey is er`,
+  'update.title': (v) => `Dockey ${v} is er`,
+  'update.none': 'Je hebt de nieuwste versie',
+  'update.current': (v) => `Nu: versie ${v}`,
+  'update.install': 'Nu bijwerken',
+  'update.page': 'Op GitHub bekijken',
+  'update.downloading': 'Downloaden en controleren…',
+  'update.started': 'De installer is gestart. Dockey sluit zo af en start daarna vanzelf opnieuw.',
+  'group.updates': 'Updates',
+  'update.auto': 'Automatisch controleren',
+  'update.autoHint': 'Eens per dag kijkt Dockey bij GitHub of er een nieuwe versie is. Er gaat niets over jou mee, en bijwerken gebeurt pas na je klik.',
+  'update.check': 'Nu controleren',
+  'update.checking': 'Controleren…',
+  'update.latest': (v) => `Je hebt de nieuwste versie (${v}).`,
+  'update.found': (v) => `Versie ${v} is er.`,
+  'update.show': 'Bekijken',
+  'transparency.label': 'Transparantie',
+  'transparency.hint': 'Hoe doorzichtig de balk is; 0% is zoals het thema.',
+  'err.updateHash': 'De download klopt niet met het controlegetal van GitHub en is weggegooid.',
+  'err.updateSize': 'De download is niet compleet.',
+  'err.updateNone': 'Er staat geen update klaar.',
+
   // Foutcodes van de backend (net.rs)
   'err.scheme': 'Alleen adressen met http:// of https://',
   'err.http': (code) => `Het adres antwoordt met HTTP ${code}`,
@@ -392,6 +416,29 @@ const en = {
   'wx.rainChance': (pct) => `${pct}% chance of rain`,
   'wx.sun': (rise, set) => `Sunrise ${rise} · sunset ${set}`,
 
+  'update.menu': (v) => `Update to version ${v}`,
+  'update.available': (v) => `Start\nDockey ${v} is available`,
+  'update.title': (v) => `Dockey ${v} is available`,
+  'update.none': "You're up to date",
+  'update.current': (v) => `Current: version ${v}`,
+  'update.install': 'Update now',
+  'update.page': 'View on GitHub',
+  'update.downloading': 'Downloading and verifying…',
+  'update.started': 'The installer has started. Dockey will close shortly and then restart by itself.',
+  'group.updates': 'Updates',
+  'update.auto': 'Check automatically',
+  'update.autoHint': 'Once a day Dockey checks GitHub for a new version. Nothing about you is sent, and updating only happens after you click.',
+  'update.check': 'Check now',
+  'update.checking': 'Checking…',
+  'update.latest': (v) => `You have the latest version (${v}).`,
+  'update.found': (v) => `Version ${v} is available.`,
+  'update.show': 'View',
+  'transparency.label': 'Transparency',
+  'transparency.hint': 'How see-through the bar is; 0% is as the theme.',
+  'err.updateHash': "The download doesn't match GitHub's checksum and was discarded.",
+  'err.updateSize': 'The download is incomplete.',
+  'err.updateNone': 'No update is available.',
+
   'err.scheme': 'Only http:// or https:// addresses',
   'err.http': (code) => `The address responds with HTTP ${code}`,
   'err.notImage': 'Not an image',
@@ -437,6 +484,9 @@ export function errorText(err) {
   const text = String(err?.message ?? err);
   if (text === 'ERR_SCHEME') return t('err.scheme');
   if (text === 'ERR_NOT_IMAGE') return t('err.notImage');
+  if (text === 'ERR_UPDATE_HASH') return t('err.updateHash');
+  if (text === 'ERR_UPDATE_SIZE') return t('err.updateSize');
+  if (text === 'ERR_UPDATE_NONE') return t('err.updateNone');
   const http = /^ERR_HTTP:(\d+)$/.exec(text);
   return http ? t('err.http', http[1]) : text;
 }

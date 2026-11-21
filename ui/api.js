@@ -28,6 +28,9 @@ export function applyLook(config) {
   root.dataset.pos = config.position;
   root.dataset.orient = config.position === 'left' || config.position === 'right' ? 'v' : 'h';
   root.toggleAttribute('data-acrylic', acrylicSupported && config.theme === 'glas');
+  // Transparantie 0–80 %: 0 = zo dekkend als het thema, 80 = veel doorzichtiger.
+  const transparency = Math.min(80, Math.max(0, Number(config.transparency) || 0));
+  root.style.setProperty('--bg-opacity', String(1 - transparency / 100));
   return languageChanged;
 }
 

@@ -38,6 +38,7 @@ features = [
   "Win32_Media_Audio",
   "Win32_Media_Audio_Endpoints",
   "Win32_Security",
+  "Win32_Security_Cryptography",
   "Win32_NetworkManagement_IpHelper",
   "Win32_NetworkManagement_Ndis",
   "Win32_Storage_FileSystem",

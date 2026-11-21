@@ -35,12 +35,23 @@ function create() {
   // Net als soms in het echt: dit icoon lukt alleen via een open venster.
   const windowOnlyIcons = new Set(['c:\\apps\\firefox.exe']);
 
+  // ?update=1 bootst een nieuwere release na.
+  const mockUpdate = params.has('update')
+    ? {
+        version: '0.3.0',
+        notes: '## Wat is er nieuw\n\n- **Updates**: Dockey kijkt zelf of er een nieuwe versie is.\n- Instelbare transparantie van de balk.',
+        page: 'https://github.com/voorbeeld/dockey/releases/tag/v0.3.0',
+      }
+    : null;
+
   const config = {
     position: params.get('pos') ?? 'bottom',
     layout: params.get('layout') ?? 'dock',
     theme: params.get('theme') ?? 'rookglas',
     size: params.get('size') ?? 'm',
     language: params.get('lang') ?? 'auto',
+    transparency: Number(params.get('transparantie') ?? 0),
+    updateCheck: true,
     customWidgets: params.has('custom')
       ? [
           { id: 'st', kind: 'status', name: 'Server', url: 'https://server.voorbeeld/status.json', template: '', icon: '', openUrl: '', interval: 60, insecure: true },
@@ -200,7 +211,12 @@ function create() {
   document.addEventListener('mousedown', () => hidePopup(true), true);
 
   const commands = {
-    get_initial: () => ({ config: structuredClone(config), shell: snapshot(), stats: { ...stats }, media: { ...media } }),
+    get_initial: () => ({ config: structuredClone(config), shell: snapshot(), stats: { ...stats }, media: { ...media }, version: '0.2.0', update: mockUpdate }),
+    check_update: async () => ({ update: mockUpdate, current: '0.2.0' }),
+    install_update: async () => {
+      await new Promise((r) => setTimeout(r, 800));
+      if (params.has('updatefout')) throw 'ERR_UPDATE_HASH';
+    },
     set_config: ({ config: next }) => {
       Object.assign(config, structuredClone(next));
       pushConfig();

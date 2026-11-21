@@ -28,6 +28,8 @@ systeemvak en live widgets, terwijl de gewone Windows-taakbalk uit beeld gaat.
   breedte (zoals KDE Plasma) of een balk tegen de rand; onder, boven, links of
   rechts. Links of rechts geeft een look zoals de dock van Ubuntu: apps
   bovenaan, compacte widgets daaronder en de knop met het puntenraster onderaan.
+  De transparantie van de balk stel je in met een schuifregelaar (Instellingen →
+  Uiterlijk).
 - **Taal**: Nederlands of Engels, net als de weergavetaal van Windows. Een
   andere taal kies je in Instellingen → Uiterlijk → Taal; die geldt meteen.
 - **Windows-taakbalk**: verbergen, automatisch verbergen of laten staan. Bij
@@ -156,10 +158,22 @@ blijven 90 dagen staan.
 
 ### Bijwerken en verwijderen
 
-- **Bijwerken**: draai de nieuwe `Dockey-Setup-<versie>.exe` van de
-  [releases](https://github.com/tribalgfx/dockey/releases). Die sluit een
-  draaiende Dockey netjes af (de Windows-taakbalk komt even terug), vervangt
-  het programma en laat je instellingen staan.
+- **Bijwerken**: Dockey kijkt zelf of er een nieuwe versie is: een minuut na
+  het starten en daarna eens per dag, bij de
+  [releases](https://github.com/tribalgfx/dockey/releases). Is er een, dan
+  krijgt de startknop een stipje, en staat bovenaan het balkmenu (rechtsklik op
+  de balk) en het menu van het tray-icoon **Bijwerken naar versie …**. Daar zie
+  je wat er nieuw is en kies je **Nu bijwerken**: Dockey downloadt de
+  installer, controleert hem met het SHA-256-controlegetal dat GitHub bij de
+  release vermeldt (klopt dat niet, dan wordt hij weggegooid), en start hem.
+  De installer sluit Dockey netjes af, vervangt het programma en start Dockey
+  daarna opnieuw; je instellingen blijven staan. Zonder je klik wordt er niets
+  gedownload of geïnstalleerd. Het automatisch kijken zet je uit in
+  Instellingen → Updates; daar kun je ook meteen controleren.
+
+  Zelf bijwerken kan ook: draai de nieuwe `Dockey-Setup-<versie>.exe` van de
+  releases. Die sluit een draaiende Dockey netjes af (de Windows-taakbalk komt
+  even terug), vervangt het programma en laat je instellingen staan.
   - Een oudere Dockey (van vóór de installer) kent dat afsluiten nog niet. De
     installer vraagt dan of hij Dockey mag stoppen, stopt hem en zet daarna de
     Windows-taakbalk terug.
@@ -290,6 +304,7 @@ src-tauri/           Windows-kant (Rust, Tauri 2)
   src/media.rs           nu-speelt en afspeelknoppen
   src/keys.rs            Windows-sneltoetsen (Start, Taakweergave, …)
   src/config.rs          instellingen
+  src/update.rs          nieuwe versie zoeken, downloaden, controleren en installeren
 ```
 
 Het logo is een D met ezelsoren (een knipoog naar *Donkie*); het gat in de D
@@ -298,7 +313,10 @@ bronbestanden staan in `src-tauri/icons/`: `icon.svg` voor 32 px en groter,
 `icon-klein.svg` (dikker, zonder details) voor 16–24 px.
 
 Het weer komt van [Open-Meteo](https://open-meteo.com) (geen account of sleutel
-nodig); verder maakt Dockey geen verbinding met internet.
+nodig). Voor updates vraagt Dockey eens per dag de nieuwste release op bij
+GitHub; daarbij gaat niets over jou of je pc mee (uit te zetten in Instellingen
+→ Updates). Verder maakt Dockey alleen verbinding met de adressen die je zelf
+invult (agenda's en eigen widgets).
 
 ## Licentie
 

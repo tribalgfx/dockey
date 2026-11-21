@@ -13,6 +13,7 @@ mod shell;
 mod stats;
 mod taskbar;
 mod tray;
+mod update;
 mod util;
 
 use config::{Config, Edge, Pinned};
@@ -48,6 +49,8 @@ struct AppState {
     media: Mutex<Option<media::Media>>,
     icons: Mutex<HashMap<String, String>>,
     popup: Mutex<Popup>,
+    /// Een nieuwere release die nog niet geïnstalleerd is.
+    update: Mutex<Option<update::Release>>,
 }
 
 fn window_hwnd(app: &AppHandle, label: &str) -> Option<HWND> {
@@ -104,9 +107,7 @@ fn apply_config(app: &AppHandle, cfg: &Config) {
     if auto.is_enabled().unwrap_or(false) != cfg.autostart {
         let _ = if cfg.autostart { auto.enable() } else { auto.disable() };
     }
-    if let (Some(tray), Ok(menu)) = (app.tray_by_id(TRAY_ID), tray_menu(app, cfg.ui_language())) {
-        let _ = tray.set_menu(Some(menu));
-    }
+    refresh_tray_menu(app); // de taal kan veranderd zijn
     request_layout(app);
 }
 
@@ -128,7 +129,40 @@ fn get_initial(state: State<AppState>) -> Value {
         "media": *state.media.lock().unwrap(),
         "acrylic": backdrop::supported(),
         "systemLanguage": config::system_language(),
+        "version": update::current(),
+        "update": *state.update.lock().unwrap(),
     })
+}
+
+/// Bewaart de uitkomst van een updatecontrole en vertelt het de vensters en
+/// het traymenu, als er iets veranderde.
+fn set_update(app: &AppHandle, found: Option<update::Release>) {
+    let state = app.state::<AppState>();
+    let changed = {
+        let mut current = state.update.lock().unwrap();
+        let changed = *current != found;
+        *current = found.clone();
+        changed
+    };
+    if changed {
+        let _ = app.emit("update", &found);
+        refresh_tray_menu(app);
+    }
+}
+
+/// "Nu controleren" in de instellingen.
+#[tauri::command(async)]
+fn check_update(app: AppHandle) -> Result<Value, String> {
+    let found = update::check()?;
+    set_update(&app, found.clone());
+    Ok(json!({ "update": found, "current": update::current() }))
+}
+
+/// "Nu bijwerken": downloaden, controleren en de installer starten.
+#[tauri::command(async)]
+fn install_update(state: State<AppState>) -> Result<(), String> {
+    let release = state.update.lock().unwrap().clone().ok_or("ERR_UPDATE_NONE")?;
+    update::download_and_start(&release)
 }
 
 /// De interface meldt waar zijn glasvlak staat; daar komt de vervaging.
@@ -483,7 +517,8 @@ fn media_thread(app: AppHandle) {
 
 const TRAY_ID: &str = "dockey";
 
-/// Het menu van het systeemvakicoon, in de taal van de interface.
+/// Het menu van het systeemvakicoon, in de taal van de interface. Staat er een
+/// update klaar, dan staat die bovenaan.
 fn tray_menu(app: &AppHandle, lang: &str) -> tauri::Result<Menu<tauri::Wry>> {
     let (settings, quit) = match lang {
         "nl" => ("Instellingen", "Dockey afsluiten"),
@@ -491,7 +526,40 @@ fn tray_menu(app: &AppHandle, lang: &str) -> tauri::Result<Menu<tauri::Wry>> {
     };
     let settings = MenuItem::with_id(app, "settings", settings, true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", quit, true, None::<&str>)?;
-    Menu::with_items(app, &[&settings, &quit])
+    let pending = app.state::<AppState>().update.lock().unwrap().as_ref().map(|r| r.version.clone());
+    match pending {
+        Some(version) => {
+            let label = match lang {
+                "nl" => format!("Bijwerken naar versie {version}…"),
+                _ => format!("Update to version {version}…"),
+            };
+            let update = MenuItem::with_id(app, "update", label, true, None::<&str>)?;
+            Menu::with_items(app, &[&update, &settings, &quit])
+        }
+        None => Menu::with_items(app, &[&settings, &quit]),
+    }
+}
+
+fn refresh_tray_menu(app: &AppHandle) {
+    let lang = app.state::<AppState>().config.lock().unwrap().ui_language();
+    if let (Some(tray), Ok(menu)) = (app.tray_by_id(TRAY_ID), tray_menu(app, lang)) {
+        let _ = tray.set_menu(Some(menu));
+    }
+}
+
+/// Een minuut na het starten en daarna eens per dag: is er een nieuwe versie?
+fn update_thread(app: AppHandle) {
+    std::thread::sleep(Duration::from_secs(60));
+    loop {
+        let enabled = app.state::<AppState>().config.lock().unwrap().update_check;
+        if enabled {
+            match update::check() {
+                Ok(found) => set_update(&app, found),
+                Err(e) => util::log(&format!("updatecontrole mislukt: {e}")),
+            }
+        }
+        std::thread::sleep(Duration::from_secs(24 * 60 * 60));
+    }
 }
 
 fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
@@ -540,6 +608,9 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
             "settings" => {
                 let _ = app.emit_to("dock", "open-settings", ());
             }
+            "update" => {
+                let _ = app.emit_to("dock", "open-update", ());
+            }
             "quit" => app.exit(0),
             _ => {}
         }
@@ -549,7 +620,7 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     }
     tray.build(app)?;
 
-    for worker in [shell_thread as fn(AppHandle), stats_thread, media_thread] {
+    for worker in [shell_thread as fn(AppHandle), stats_thread, media_thread, update_thread] {
         let h = handle.clone();
         std::thread::spawn(move || worker(h));
     }
@@ -617,6 +688,7 @@ fn main() {
         media: Mutex::default(),
         icons: Mutex::default(),
         popup: Mutex::default(),
+        update: Mutex::default(),
     };
 
     let app = tauri::Builder::default()
@@ -650,6 +722,8 @@ fn main() {
             popup_ready,
             close_popup,
             set_backdrop,
+            check_update,
+            install_update,
         ])
         .on_window_event(|window, event| match event {
             // De vensters zelf sluiten nooit; afsluiten gaat via het menu.

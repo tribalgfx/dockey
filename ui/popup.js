@@ -15,6 +15,8 @@ const el = (tag, cls, html) => {
 
 const initial = await invoke('get_initial');
 let config = initial.config;
+const version = initial.version ?? '';
+let pendingUpdate = initial.update ?? null; // een nieuwere release, of null
 let current = null; // { id, kind, payload }
 setAcrylicSupport(initial.acrylic);
 setSystemLanguage(initial.systemLanguage);
@@ -24,7 +26,7 @@ trackBackdrop(panel);
 /** Meldt de gemeten grootte; de backend plaatst en toont daarna het venster.
  *  (Geen requestAnimationFrame: die loopt niet zolang het venster verborgen is.)
  *  Levert meten niets op, dan een veilige standaardmaat per soort paneel. */
-const FALLBACK = { menu: [268, 320], settings: [372, 640], calendar: [292, 380] };
+const FALLBACK = { menu: [268, 320], settings: [372, 640], calendar: [292, 380], update: [340, 320] };
 function ready() {
   const [w, h] = FALLBACK[current?.kind] ?? FALLBACK.menu;
   return invoke('popup_ready', { width: (panel.offsetWidth || w) + 24, height: (panel.offsetHeight || h) + 24 });
@@ -123,6 +125,24 @@ function toggle(get, set) {
   b.setAttribute('aria-checked', String(get()));
   b.addEventListener('click', () => save((c) => set(c, !get())));
   return b;
+}
+
+/** Schuifregelaar in procenten; bewaart pas bij loslaten. */
+function slider(key, min, max, step) {
+  const box = el('div', 'slider');
+  const range = el('input');
+  range.type = 'range';
+  range.min = min;
+  range.max = max;
+  range.step = step;
+  range.value = config[key] ?? 0;
+  const value = el('span', 'slider-value');
+  const show = () => (value.textContent = `${range.value}%`);
+  show();
+  range.addEventListener('input', show);
+  range.addEventListener('change', () => save((c) => (c[key] = Number(range.value))));
+  box.append(range, value);
+  return box;
 }
 
 function field(label, control, hint, stack) {
@@ -490,7 +510,12 @@ function renderSettings() {
 
   const body = el('div', 'settings-body');
   body.append(
-    group(t('group.look'), swatches, field(t('lang.label'), seg('language', [['auto', t('lang.auto')], ['nl', 'Nederlands'], ['en', 'English']]))),
+    group(
+      t('group.look'),
+      swatches,
+      field(t('transparency.label'), slider('transparency', 0, 80, 5), t('transparency.hint'), true),
+      field(t('lang.label'), seg('language', [['auto', t('lang.auto')], ['nl', 'Nederlands'], ['en', 'English']])),
+    ),
     group(
       t('group.place'),
       field(t('pos.label'), seg('position', ['bottom', 'top', 'left', 'right'].map((v) => [v, t(`pos.${v}`)]))),
@@ -516,9 +541,15 @@ function renderSettings() {
       field(t('reserve.label'), toggle(() => config.reserveSpace, (c, v) => (c.reserveSpace = v)), t('reserve.hint')),
       field(t('autostart.label'), toggle(() => config.autostart, (c, v) => (c.autostart = v))),
     ),
+    group(
+      t('group.updates'),
+      field(t('update.auto'), toggle(() => config.updateCheck, (c, v) => (c.updateCheck = v)), t('update.autoHint')),
+      updateCheckRow(),
+    ),
   );
 
-  const foot = el('div', 'settings-foot', '<span>Dockey 0.2</span>');
+  const foot = el('div', 'settings-foot', '<span></span>');
+  foot.querySelector('span').textContent = `Dockey ${version}`;
   const quit = el('button', 'btn', `${glyph.power}<span></span>`);
   quit.querySelector('span').textContent = t('settings.quit');
   quit.addEventListener('click', () => invoke('quit'));
@@ -821,6 +852,112 @@ async function renderWeather() {
   ready();
 }
 
+// -------------------------------------------------------------- updates --
+
+let updateNote = '';
+let updateBusy = false;
+let checkNote = '';
+
+/** Release-tekst (Markdown) als gewone tekst. */
+const plainNotes = (text) =>
+  text
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/^#+\s*/gm, '')
+    .replace(/^>\s?/gm, '')
+    .replace(/\*\*/g, '')
+    .replace(/`/g, '')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
+function renderUpdate() {
+  panel.className = 'update';
+  panel.replaceChildren();
+  const u = pendingUpdate;
+  const head = el('div', 'upd-head');
+  const title = el('strong');
+  title.textContent = u ? t('update.title', u.version) : t('update.none');
+  const now = el('span');
+  now.textContent = t('update.current', version);
+  head.append(title, now);
+  panel.append(head);
+  if (!u) return;
+
+  if (u.notes) {
+    const notes = el('div', 'upd-notes');
+    notes.textContent = plainNotes(u.notes);
+    panel.append(notes);
+  }
+  const actions = el('div', 'actions');
+  const go = el('button', 'btn primary');
+  go.textContent = t('update.install');
+  go.disabled = updateBusy;
+  go.addEventListener('click', async () => {
+    updateBusy = true;
+    updateNote = t('update.downloading');
+    renderUpdate();
+    ready();
+    try {
+      await invoke('install_update');
+      updateNote = t('update.started');
+    } catch (err) {
+      updateNote = t('failed', errorText(err));
+      updateBusy = false;
+    }
+    if (current?.kind === 'update') {
+      renderUpdate();
+      ready();
+    }
+  });
+  const page = el('button', 'btn');
+  page.textContent = t('update.page');
+  page.addEventListener('click', () => invoke('launch', { target: u.page }));
+  actions.append(go, page);
+  const note = el('div', 'note');
+  note.textContent = updateNote;
+  panel.append(actions, note);
+}
+
+/** "Nu controleren" in de instellingen, met de uitkomst ernaast. */
+function updateCheckRow() {
+  const row = el('div', 'actions');
+  const check = el('button', 'btn');
+  check.textContent = t('update.check');
+  const note = el('div', 'note');
+  note.textContent = checkNote;
+  check.addEventListener('click', async () => {
+    note.textContent = t('update.checking');
+    try {
+      const result = await invoke('check_update');
+      checkNote = result.update ? t('update.found', result.update.version) : t('update.latest', result.current);
+    } catch (err) {
+      checkNote = t('failed', errorText(err));
+    }
+    if (current?.kind === 'settings') {
+      renderSettings();
+      ready();
+    }
+  });
+  row.append(check);
+  if (pendingUpdate) {
+    const show = el('button', 'btn primary');
+    show.textContent = t('update.show');
+    show.addEventListener('click', () => emit('open-update'));
+    row.append(show);
+  }
+  const box = el('div');
+  box.append(row, note);
+  return box;
+}
+
+listen('update', (update) => {
+  pendingUpdate = update;
+  if (current?.kind === 'update' || current?.kind === 'settings') {
+    render();
+    ready();
+  }
+});
+
 // ------------------------------------------------------------------ start --
 
 function render() {
@@ -830,6 +967,7 @@ function render() {
   else if (current.kind === 'calendar') renderCalendar();
   else if (current.kind === 'weather') return void renderWeather();
   else if (current.kind === 'tray') renderTray();
+  else if (current.kind === 'update') renderUpdate();
 }
 
 listen('popup:render', async (request) => {
