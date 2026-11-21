@@ -64,12 +64,18 @@ async function run(item) {
   close().catch(() => {});
 }
 
-function renderMenu({ title, items }) {
+function renderMenu({ title, icon, items }) {
   panel.className = 'menu';
   panel.replaceChildren();
   if (title) {
-    const head = el('div', 'menu-title');
-    head.textContent = title;
+    const head = el('div', 'menu-title', '<span></span>');
+    head.querySelector('span').textContent = title;
+    if (icon) {
+      const img = el('img');
+      img.alt = '';
+      img.src = icon;
+      head.prepend(img);
+    }
     panel.append(head);
   }
   for (const item of items) {
@@ -77,7 +83,7 @@ function renderMenu({ title, items }) {
       panel.append(el('div', 'rule'));
       continue;
     }
-    const row = el('div', `item${item.danger ? ' danger' : ''}${item.bold ? ' bold' : ''}`);
+    const row = el('div', `item${item.danger ? ' danger' : ''}${item.bold ? ' bold' : ''}${item.active ? ' active' : ''}`);
     const go = el('button', 'go', `${glyph[item.icon] ?? ''}<span></span>`);
     go.querySelector('span').textContent = item.label;
     go.addEventListener('click', () => run(item));
@@ -137,7 +143,10 @@ function slider(key, min, max, step) {
   range.step = step;
   range.value = config[key] ?? 0;
   const value = el('span', 'slider-value');
-  const show = () => (value.textContent = `${range.value}%`);
+  const show = () => {
+    value.textContent = `${range.value}%`;
+    range.style.setProperty('--fill', `${((range.value - min) / (max - min)) * 100}%`);
+  };
   show();
   range.addEventListener('input', show);
   range.addEventListener('change', () => save((c) => (c[key] = Number(range.value))));
@@ -162,7 +171,9 @@ function group(title, ...children) {
   const g = el('section', 'group');
   const h = el('h2');
   h.textContent = title;
-  g.append(h, ...children);
+  const card = el('div', 'card');
+  card.append(...children);
+  g.append(h, card);
   return g;
 }
 
@@ -460,7 +471,8 @@ function renderSettings() {
   panel.className = 'settings';
   panel.replaceChildren();
 
-  const head = el('div', 'settings-head', '<h1>Dockey</h1>');
+  const head = el('div', 'settings-head', '<h1></h1>');
+  head.querySelector('h1').textContent = t('settings.title');
   const x = el('button', 'icon-btn', glyph.close);
   x.title = t('settings.close');
   x.addEventListener('click', close);
@@ -468,18 +480,21 @@ function renderSettings() {
 
   const swatches = el('div', 'swatches');
   for (const value of THEMES) {
-    const b = el('button', `swatch${config.theme === value ? ' on' : ''}`, `<i class="${value}"></i>`);
+    const b = el('button', `swatch${config.theme === value ? ' on' : ''}`, `<i class="${value}"><b></b></i>`);
     b.append(t(`theme.${value}`));
     b.addEventListener('click', () => save((c) => (c.theme = value)));
     swatches.append(b);
   }
 
-  const chips = el('div', 'chips');
+  const checks = el('div', 'checks');
   for (const key of WIDGETS) {
-    const b = el('button', `chip${config.widgets[key] ? ' on' : ''}`);
-    b.textContent = t(`widget.${key}`);
+    const on = !!config.widgets[key];
+    const b = el('button', `check-item${on ? ' on' : ''}`, `<i>${glyph.check}</i><span></span>`);
+    b.setAttribute('role', 'checkbox');
+    b.setAttribute('aria-checked', String(on));
+    b.querySelector('span').textContent = t(`widget.${key}`);
     b.addEventListener('click', () => save((c) => (c.widgets[key] = !c.widgets[key])));
-    chips.append(b);
+    checks.append(b);
   }
 
   const place = el('form', 'place', '<input type="text" spellcheck="false"><button class="btn"></button>');
@@ -508,7 +523,11 @@ function renderSettings() {
     }
   });
 
+  const placeRow = el('div', 'place-row');
+  placeRow.append(place, note);
+
   const body = el('div', 'settings-body');
+  body.addEventListener('scroll', () => body.classList.toggle('scrolled', body.scrollTop > 0));
   body.append(
     group(
       t('group.look'),
@@ -527,7 +546,7 @@ function renderSettings() {
         t('expand.hint'),
       ),
     ),
-    group(t('group.widgets'), chips, orderHint(), place, note),
+    group(t('group.widgets'), checks, placeRow, orderHint()),
     group(t('group.custom'), customSection()),
     group(t('group.calendars'), calendarSection()),
     group(
@@ -557,6 +576,7 @@ function renderSettings() {
 
   panel.append(head, body, foot);
   body.scrollTop = scroll;
+  body.classList.toggle('scrolled', scroll > 0);
 }
 
 // --------------------------------------------------------------- kalender --

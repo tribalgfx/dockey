@@ -20,6 +20,7 @@ export const glyph = {
   gear: svg('<circle cx="8" cy="8" r="2.2"/><path d="M8 1.8v1.6M8 12.6v1.6M1.8 8h1.6M12.6 8h1.6M3.6 3.6l1.1 1.1M11.3 11.3l1.1 1.1M3.6 12.4l1.1-1.1M11.3 4.7l1.1-1.1"/>'),
   close: svg('<path d="M4 4l8 8M12 4l-8 8"/>'),
   pin: svg('<path d="M9.8 2.2 13.8 6.2 11.6 7 9.4 9.2 9.6 11.8 4.2 6.4 6.8 6.6 9 4.4z"/><path d="M6.8 9.2 2.8 13.2"/>'),
+  check: svg('<path d="M3.4 8.4 6.5 11.4 12.6 5"/>'),
   plus: svg('<path d="M8 3.2v9.6M3.2 8h9.6"/>'),
   power: svg('<path d="M8 2.2v5.2"/><path d="M4.6 4.4a5 5 0 1 0 6.8 0"/>'),
   desktop: svg('<rect x="2" y="3" width="12" height="8" rx="1.5"/><path d="M6 13.5h4"/>'),

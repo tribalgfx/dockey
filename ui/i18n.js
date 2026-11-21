@@ -71,6 +71,7 @@ const nl = {
   'wx.thunder': 'Onweer',
 
   // Instellingen
+  'settings.title': 'Instellingen',
   'settings.close': 'Sluiten',
   'settings.quit': 'Afsluiten',
   'group.look': 'Uiterlijk',
@@ -293,6 +294,7 @@ const en = {
   'wx.snowShowers': 'Snow showers',
   'wx.thunder': 'Thunderstorm',
 
+  'settings.title': 'Settings',
   'settings.close': 'Close',
   'settings.quit': 'Exit',
   'group.look': 'Appearance',

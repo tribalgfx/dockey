@@ -64,12 +64,21 @@ const dockMenu = () => ({
   ],
 });
 
-function appMenu(g) {
+/** Vensternaam zonder de appnaam erachter ("Recepten — Browser" → "Recepten"):
+ *  de kop van het menu noemt de app al. */
+function windowLabel(title, name) {
+  if (!title) return name;
+  const m = title.match(/^(.+?)\s+[—–\-|·]\s+([^—–|·]+)$/);
+  if (m && name && m[2].toLowerCase().includes(name.trim().toLowerCase())) return m[1];
+  return title;
+}
+
+function appMenu(g, icon) {
   const items = [];
   const act = (hwnd, action) => ({ cmd: 'window_action', args: { hwnd, action } });
   for (const w of g.windows) {
     items.push({
-      label: w.title || g.name, icon: 'windows', bold: w.active,
+      label: windowLabel(w.title, g.name), icon: 'windows', active: w.active,
       action: act(w.hwnd, 'focus'),
       side: { icon: 'close', title: t('app.closeWindow'), action: act(w.hwnd, 'close') },
     });
@@ -90,7 +99,7 @@ function appMenu(g) {
       icon: 'close', danger: true, actions: g.windows.map((w) => act(w.hwnd, 'close')),
     });
   }
-  return { title: g.name, items };
+  return { title: g.name, icon, items };
 }
 
 // ------------------------------------------------------------------- apps --
@@ -137,6 +146,8 @@ function ensureIcon(tile, g) {
     .finally(() => (entry.pending = false));
 }
 
+const tileIcon = (tile) => tile.querySelector('img')?.src;
+
 function createTile(g) {
   const tile = el('button', 'tile app');
   tile.dataset.popup = `menu:${g.key}`;
@@ -151,7 +162,7 @@ function createTile(g) {
       const w = group.windows[0];
       return void invoke('window_action', { hwnd: w.hwnd, action: w.active ? 'minimize' : 'focus' });
     }
-    openPopup(tile.dataset.popup, 'menu', appMenu(group), tile);
+    openPopup(tile.dataset.popup, 'menu', appMenu(group, tileIcon(tile)), tile);
   });
   // Middelste muisknop: nieuw venster.
   tile.addEventListener('auxclick', (e) => {
@@ -160,7 +171,7 @@ function createTile(g) {
   tile.addEventListener('contextmenu', (e) => {
     e.preventDefault();
     e.stopPropagation();
-    openPopup(tile.dataset.popup, 'menu', appMenu(tile.group), tile);
+    openPopup(tile.dataset.popup, 'menu', appMenu(tile.group, tileIcon(tile)), tile);
   });
   return tile;
 }
