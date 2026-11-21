@@ -7,6 +7,8 @@ systeemvak en live widgets, terwijl de gewone Windows-taakbalk uit beeld gaat.
 
 > **Status: vroege versie.** Draait op Windows 11; nog niet elk onderdeel is
 > breed op verschillende pc's getest. Zie [Bekende beperkingen](#bekende-beperkingen).
+> De nieuwste versie en wat er per versie veranderde, staan bij de
+> [releases](https://github.com/tribalgfx/dockey/releases).
 >
 > Dockey heette eerst *Lichtbalk*. Bij de eerste start neemt Dockey de
 > instellingen van Lichtbalk vanzelf over.
@@ -19,7 +21,8 @@ systeemvak en live widgets, terwijl de gewone Windows-taakbalk uit beeld gaat.
   Windows-taakbalk vastzitten.
 - **Widgets**: nu-speelt met albumhoes en knoppen, weer (klik voor de
   komende uren en dagen), CPU-grafiek en geheugen, netwerksnelheid, volume,
-  accu, agenda en klok met kalender (incl. weeknummers).
+  accu, agenda en klok met kalender (incl. weeknummers), plus
+  [eigen widgets](#eigen-widgets) en statuswidgets voor je eigen diensten.
 - **Systeemvak**: de pictogrammen van apps (OneDrive, Discord, Steam, …)
   gegroepeerd in de balk. Vastgezette pictogrammen staan in de balk, de rest
   zit achter ^; klikken en rechtsklikken gaan gewoon door naar de app.
@@ -32,6 +35,9 @@ systeemvak en live widgets, terwijl de gewone Windows-taakbalk uit beeld gaat.
   Uiterlijk).
 - **Taal**: Nederlands of Engels, net als de weergavetaal van Windows. Een
   andere taal kies je in Instellingen → Uiterlijk → Taal; die geldt meteen.
+- **Bijwerken**: Dockey meldt zelf als er een nieuwe versie is en werkt na een
+  klik bij, met een controle van de download (zie
+  [Bijwerken en verwijderen](#bijwerken-en-verwijderen)).
 - **Windows-taakbalk**: verbergen, automatisch verbergen of laten staan. Bij
   afsluiten komt hij terug zoals hij was; er wordt niets aan Windows gepatcht.
 - **Schermruimte**: de balk meldt zich aan als "AppBar", dus gemaximaliseerde
@@ -58,6 +64,7 @@ systeemvak en live widgets, terwijl de gewone Windows-taakbalk uit beeld gaat.
 | Klik op ^ (systeemvak) | De overige pictogrammen; "Kiezen wat in de balk staat" zet ze vast |
 | Klik op een eigen widget | Het adres dat erbij hoort (bij een statuswidget: de link uit het antwoord) |
 | Widget vastpakken en slepen | Volgorde van de widgets veranderen (Instellingen → Standaardvolgorde zet hem terug) |
+| Stipje op het puntenraster | Er is een nieuwe versie: rechtsklik op de balk → Bijwerken naar versie … |
 
 Menu's gaan dicht met dezelfde knop waarmee je ze opende (Start, snelle
 instellingen, de kalender, app-menu's) of met een klik op een lege plek van de
@@ -170,6 +177,10 @@ blijven 90 dagen staan.
   daarna opnieuw; je instellingen blijven staan. Zonder je klik wordt er niets
   gedownload of geïnstalleerd. Het automatisch kijken zet je uit in
   Instellingen → Updates; daar kun je ook meteen controleren.
+
+  Dit kan Dockey vanaf versie 0.3.0. Heb je 0.2.0, werk dan één keer zelf bij
+  met de installer van de nieuwste release (zie hieronder); daarna gaat het
+  vanzelf.
 
   Zelf bijwerken kan ook: draai de nieuwe `Dockey-Setup-<versie>.exe` van de
   releases. Die sluit een draaiende Dockey netjes af (de Windows-taakbalk komt
