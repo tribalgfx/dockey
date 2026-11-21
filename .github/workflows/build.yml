@@ -1,0 +1,55 @@
+name: Windows-build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: src-tauri
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Bouwen
+        run: cargo build --release --locked
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dockey-windows-x64
+          path: src-tauri/target/release/dockey.exe
+          if-no-files-found: error
+
+      # Inno Setup staat meestal al op de runner; anders via Chocolatey.
+      - name: Installer bouwen
+        shell: pwsh
+        working-directory: .
+        run: |
+          $iscc = 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup -y --no-progress
+            if ($LASTEXITCODE -ne 0) { throw 'Inno Setup installeren is mislukt.' }
+          }
+          $version = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+          & $iscc "/DAppVersion=$version" "/DSourceExe=$PWD\src-tauri\target\release\dockey.exe" installer\Dockey.iss
+          if ($LASTEXITCODE -ne 0) { throw 'Inno Setup meldde een fout.' }
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dockey-setup
+          path: artifacts/Dockey-Setup-*.exe
+          if-no-files-found: error

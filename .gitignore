@@ -1,0 +1,6 @@
+# Rust-builduitvoer en door Tauri gegenereerde schema's
+src-tauri/target/
+src-tauri/gen/
+
+# Installer (scripts/build-installer.ps1)
+artifacts/
