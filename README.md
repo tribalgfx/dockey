@@ -1,232 +1,236 @@
-<img src="src-tauri/icons/icon.svg" width="96" alt="Dockey-logo: een D met ezelsoren">
+<img src="src-tauri/icons/icon.svg" width="96" alt="Dockey logo: a D with donkey ears">
 
 # Dockey
 
-Een eigen taakbalk/dock voor Windows 11 (en 10): één balk met je apps, het
-systeemvak en live widgets, terwijl de gewone Windows-taakbalk uit beeld gaat.
+**English** · [Nederlands](README.nl.md)
 
-> **Status: vroege versie.** Draait op Windows 11; nog niet elk onderdeel is
-> breed op verschillende pc's getest. Zie [Bekende beperkingen](#bekende-beperkingen).
-> De nieuwste versie en wat er per versie veranderde, staan bij de
+A taskbar/dock of your own for Windows 11 (and 10): one bar with your apps, the
+system tray and live widgets, while the regular Windows taskbar moves out of
+sight.
+
+> **Status: early version.** Runs on Windows 11; not every part has been
+> widely tested on different PCs yet. See [Known limitations](#known-limitations).
+> The latest version and what changed in each version are listed under
 > [releases](https://github.com/tribalgfx/dockey/releases).
 >
-> Dockey heette eerst *Lichtbalk*. Bij de eerste start neemt Dockey de
-> instellingen van Lichtbalk vanzelf over.
+> Dockey used to be called *Lichtbalk*. On first start, Dockey takes over
+> Lichtbalk's settings automatically.
 
-## Wat het doet
+## What it does
 
-- **Apps**: vastgemaakte apps en alle open vensters, gegroepeerd per app, met de
-  echte app-iconen (lukt een icoon niet via de shell, dan probeert Dockey de
-  systeemlijst, het exe-bestand en tot slot het pictogram van een open venster). Bij de eerste start worden de apps overgenomen die al aan de
-  Windows-taakbalk vastzitten.
-- **Widgets**: nu-speelt met albumhoes en knoppen, weer (klik voor de
-  komende uren en dagen), CPU-grafiek en geheugen, netwerksnelheid, volume,
-  accu, agenda en klok met kalender (incl. weeknummers), plus
-  [eigen widgets](#eigen-widgets) en statuswidgets voor je eigen diensten.
-- **Systeemvak**: de pictogrammen van apps (OneDrive, Discord, Steam, …)
-  gegroepeerd in de balk. Vastgezette pictogrammen staan in de balk, de rest
-  zit achter ^; klikken en rechtsklikken gaan gewoon door naar de app.
-- **Uiterlijk**: vijf stijlen (Rookglas, Glas, Zwart, Wit, Nacht), drie
-  groottes, en drie vormen: een zwevende dock, een zwevend paneel over de volle
-  breedte (zoals KDE Plasma) of een balk tegen de rand; onder, boven, links of
-  rechts. Links of rechts geeft een look zoals de dock van Ubuntu: apps
-  bovenaan, compacte widgets daaronder en de knop met het puntenraster onderaan.
-  De transparantie van de balk stel je in met een schuifregelaar (Instellingen →
-  Uiterlijk).
-- **Taal**: Nederlands of Engels, net als de weergavetaal van Windows. Een
-  andere taal kies je in Instellingen → Uiterlijk → Taal; die geldt meteen.
-- **Bijwerken**: Dockey meldt zelf als er een nieuwe versie is en werkt na een
-  klik bij, met een controle van de download (zie
-  [Bijwerken en verwijderen](#bijwerken-en-verwijderen)).
-- **Windows-taakbalk**: verbergen, automatisch verbergen of laten staan. Bij
-  afsluiten komt hij terug zoals hij was; er wordt niets aan Windows gepatcht.
-- **Schermruimte**: de balk meldt zich aan als "AppBar", dus gemaximaliseerde
-  vensters stoppen bij de balk. Staat er een venster tegen de balk aan
-  (gemaximaliseerd of onderaan over de volle breedte gesnapt), dan schuift de
-  dock uit tot de volle breedte en wordt hij ondoorzichtig, zodat er geen
-  bureaubladachtergrond rond de balk te zien is. Uit te zetten in de
-  instellingen. Bij een schermvullende game of video gaat de balk uit de weg.
+- **Apps**: pinned apps and all open windows, grouped per app, with the real
+  app icons (if the shell can't provide an icon, Dockey tries the system image
+  list, the exe file and finally the icon of an open window). On first start,
+  the apps already pinned to the Windows taskbar are taken over.
+- **Widgets**: now playing with album art and controls, weather (click for the
+  coming hours and days), CPU graph and memory, network speed, volume,
+  battery, calendar and a clock with a month view (including week numbers),
+  plus [custom widgets](#custom-widgets) and status widgets for your own
+  services.
+- **System tray**: the icons of apps (OneDrive, Discord, Steam, …) grouped in
+  the bar. Pinned icons sit in the bar, the rest is behind ^; clicks and right
+  clicks go straight through to the app.
+- **Appearance**: five styles (Smoke, Glass, Black, White, Night), three sizes,
+  and three shapes: a floating dock, a floating full-width panel (like KDE
+  Plasma) or a bar against the screen edge; at the bottom, top, left or right.
+  Left or right gives a look like Ubuntu's dock: apps at the top, compact
+  widgets below them and the button with the dot grid at the bottom. A slider
+  sets how transparent the bar is (Settings → Appearance).
+- **Language**: English or Dutch, following the Windows display language. To
+  pick another language, go to Settings → Appearance → Language; it applies
+  right away.
+- **Updates**: Dockey tells you when a new version is out and updates with one
+  click, checking the download first (see
+  [Updating and uninstalling](#updating-and-uninstalling)).
+- **Windows taskbar**: hide it, auto-hide it or leave it. When Dockey exits, it
+  comes back the way it was; nothing in Windows is patched.
+- **Screen space**: the bar registers as an "AppBar", so maximised windows
+  stop at the bar. When a window touches the bar (maximised, or snapped across
+  the full width at the bottom), the dock stretches to the full width and
+  turns opaque, so no desktop background shows around the bar. This can be
+  turned off in the settings. During a full-screen game or video, the bar gets
+  out of the way.
 
-## Bediening
+## Controls
 
-| Actie | Resultaat |
+| Action | Result |
 | --- | --- |
-| Klik op een app | Starten, naar voren halen, of (als hij al actief is) minimaliseren |
-| Klik op een app met meerdere vensters | Lijst met vensters |
-| Middelste muisknop of Shift+klik op een app | Nieuw venster |
-| Rechtsklik op een app | Menu: vensters, vastmaken/losmaken, verplaatsen, sluiten |
-| Knop met het puntenraster | Startmenu van Windows |
-| Rechtsklik op een lege plek of het puntenraster | Instellingen, Taakbeheer, Taakweergave, afsluiten |
-| Klik op de klok | Kalender, met knop naar het meldingencentrum |
-| Scrollen op volume | Harder/zachter; middelste knop dempt; klik opent de snelle instellingen |
-| Klik op CPU/RAM | Taakbeheer |
-| Klik op het weer | Nu, de komende uren en zeven dagen |
-| Klik op ^ (systeemvak) | De overige pictogrammen; "Kiezen wat in de balk staat" zet ze vast |
-| Klik op een eigen widget | Het adres dat erbij hoort (bij een statuswidget: de link uit het antwoord) |
-| Widget vastpakken en slepen | Volgorde van de widgets veranderen (Instellingen → Standaardvolgorde zet hem terug) |
-| Stipje op het puntenraster | Er is een nieuwe versie: rechtsklik op de balk → Bijwerken naar versie … |
+| Click an app | Start it, bring it to the front, or (if it's already active) minimise it |
+| Click an app with several windows | List of windows |
+| Middle click or Shift+click on an app | New window |
+| Right-click an app | Menu: windows, pin/unpin, move, close |
+| Button with the dot grid | Windows Start menu |
+| Right-click an empty spot or the dot grid | Settings, Task Manager, Task view, exit |
+| Click the clock | Calendar, with a button to the notification centre |
+| Scroll on volume | Louder/quieter; middle click mutes; a click opens Quick Settings |
+| Click CPU/RAM | Task Manager |
+| Click the weather | Now, the coming hours and seven days |
+| Click ^ (system tray) | The other icons; "Choose what's in the bar" pins them |
+| Click a custom widget | The address that belongs to it (for a status widget: the link from the response) |
+| Grab a widget and drag it | Change the order of the widgets (Settings → Default order resets it) |
+| Dot on the dot grid | A new version is available: right-click the bar → Update to version … |
 
-Menu's gaan dicht met dezelfde knop waarmee je ze opende (Start, snelle
-instellingen, de kalender, app-menu's) of met een klik op een lege plek van de
-balk. De balk pakt bij een klik namelijk geen focus, net als de
-Windows-taakbalk.
+Menus close with the same button that opened them (Start, Quick Settings, the
+calendar, app menus) or with a click on an empty spot of the bar. That's
+because the bar doesn't take focus when clicked, just like the Windows
+taskbar.
 
-## Eigen widgets
+## Custom widgets
 
-Via Instellingen → Eigen widgets voeg je zelf widgets toe:
+Under Settings → Custom widgets you add widgets of your own:
 
-- **Statuswidget**: een adres dat het statusformaat hieronder teruggeeft, zoals
-  een dashboard of een eigen script op je server. Geeft het antwoord een icoon,
-  dan toont de balk alleen dat icoon met de status als rand: geen rand is alles
-  in orde, geel/oranje vraagt aandacht, rood is een storing, gestippeld is
-  onbereikbaar. Zonder icoon staat de tekst in de balk, in de kleur van de
-  status. De details staan in de tooltip; een klik opent de link uit het
-  antwoord.
-- **Eigen widget**: een adres dat tekst of JSON teruggeeft, plus een
-  sjabloon zoals `{temperatuur}°` of `{data.status}`. Laat het sjabloon leeg om
-  de tekst zelf te tonen. Je kiest zelf hoe vaak hij ververst, een icoon
-  (emoji) en eventueel wat een klik opent.
+- **Status widget**: an address that returns the status format below, such as
+  a dashboard or a script on your server. If the response includes an icon,
+  the bar shows only that icon with the status as a ring: no ring means all is
+  well, yellow/orange needs attention, red is an outage, dashed is
+  unreachable. Without an icon, the text sits in the bar in the colour of the
+  status. The details are in the tooltip; a click opens the link from the
+  response.
+- **Custom widget**: an address that returns text or JSON, plus a template
+  such as `{temperature}°` or `{data.status}`. Leave the template empty to
+  show the text itself. You choose how often it refreshes, an icon (emoji) and
+  optionally what a click opens.
 
-Bij beide kun je een zelfondertekend certificaat accepteren, voor diensten op
-je eigen netwerk. Dockey haalt de gegevens zelf op (niet de webweergave), dus
-het adres hoeft niets met CORS te doen.
+Both can accept a self-signed certificate, for services on your own network.
+Dockey fetches the data itself (not the web view), so the address doesn't need
+to deal with CORS.
 
-### Het statusformaat
+### The status format
 
 ```json
 {
   "status": "warning",
-  "text": "1 punt vraagt aandacht",
+  "text": "1 item needs attention",
   "short": "1",
-  "detail": "• Schijf bijna vol",
+  "detail": "• Disk almost full",
   "icon": "/logo.png",
-  "link": "https://mijn-server:8080/"
+  "link": "https://my-server:8080/"
 }
 ```
 
-| Veld | Verplicht | Betekenis |
+| Field | Required | Meaning |
 | --- | --- | --- |
-| `status` | ja | `ok`, `warning` of `critical` |
-| `text` | ja | Korte zin voor de balk en de tooltip (tot 80 tekens) |
-| `short` | nee | Heel kort, voor een verticale dock (tot 6 tekens); standaard ✓ of ! |
-| `detail` | nee | Extra regels in de tooltip |
-| `icon` | nee | Vierkant plaatje (PNG, JPG of SVG); mag relatief zijn ten opzichte van het adres |
-| `link` | nee | Wat een klik opent; mag ook relatief zijn. "Openen bij klik" in de instellingen gaat voor |
+| `status` | yes | `ok`, `warning` or `critical` |
+| `text` | yes | Short sentence for the bar and the tooltip (up to 80 characters) |
+| `short` | no | Very short, for a vertical dock (up to 6 characters); ✓ or ! by default |
+| `detail` | no | Extra lines in the tooltip |
+| `icon` | no | Square image (PNG, JPG or SVG); may be relative to the address |
+| `link` | no | What a click opens; may be relative too. "Open on click" in the settings takes precedence |
 
-Dockey haalt het adres op met de interval uit de instellingen (standaard elke
-minuut). Een ander antwoord dan dit formaat, of geen antwoord, toont de widget
-als niet bereikbaar.
+Dockey fetches the address at the interval from the settings (every minute by
+default). A response in any other format, or no response, shows the widget as
+unreachable.
 
-## Agenda's koppelen
+## Linking calendars
 
-Via Instellingen → Agenda's koppel je een of meer agenda's met hun iCal-link.
-Dat werkt met vrijwel elke dienst; in de instellingen staat per dienst waar je
-de link vindt:
+Under Settings → Calendars you link one or more calendars by their iCal link.
+That works with almost any service; the settings show where each service keeps
+the link:
 
-- **Google**: Instellingen → je agenda → Agenda integreren → "Geheim adres in
-  iCal-indeling"
-- **Outlook.com**: Instellingen → Agenda → Gedeelde agenda's → Een agenda
-  publiceren → ICS-link
-- **Proton**: een agenda delen via een link (vraagt een betaald abonnement)
-- **iCloud**: Openbare agenda → link (`webcal://` werkt ook)
+- **Google**: Settings → your calendar → Integrate calendar → "Secret address
+  in iCal format"
+- **Outlook.com**: Settings → Calendar → Shared calendars → Publish a calendar
+  → ICS link
+- **Proton**: share a calendar via a link (requires a paid plan)
+- **iCloud**: Public Calendar → link (`webcal://` works too)
 
-De widget **Agenda** is alleen een icoon, met een stipje in de kleur van de
-agenda zolang er vandaag nog iets komt. Met de muis erop zie je de afspraken van
-vandaag; een klik opent de kalender met stipjes op de dagen met
-afspraken, de afspraken van vandaag (of van de dag die je aanklikt) en wat er
-binnenkort komt. Dockey ververst de agenda's elk kwartier. Herhalende
-afspraken, uitzonderingen en tijdzones worden meegenomen.
+The **Calendar** widget is just an icon, with a dot in the calendar's colour
+while something is still coming up today. Hover over it to see today's
+appointments; a click opens the calendar with dots on days that have
+appointments, the appointments of today (or of the day you click) and what's
+coming up soon. Dockey refreshes the calendars every fifteen minutes.
+Recurring appointments, exceptions and time zones are taken into account.
 
-Een iCal-link is geheim: wie hem heeft, kan je agenda lezen. Dockey bewaart hem
-alleen in `%APPDATA%\Dockey\config.json` en toont in de instellingen alleen de
-naam van de dienst.
+An iCal link is secret: anyone who has it can read your calendar. Dockey
+stores it only in `%APPDATA%\Dockey\config.json` and the settings show only the
+name of the service.
 
-## Installeren
+## Installing
 
-1. Download `Dockey-Setup-<versie>.exe` bij de
-   [nieuwste release](https://github.com/tribalgfx/dockey/releases/latest).
-   Bij elke release staat het SHA-256-controlegetal van de installer.
-2. Start het. Windows SmartScreen kan waarschuwen omdat het bestand niet
-   ondertekend is ("Meer informatie → Toch uitvoeren").
-   - Er is geen beheerder nodig: Dockey komt in
-     `%LOCALAPPDATA%\Programs\Dockey`, met een snelkoppeling in het Startmenu.
-   - De installer is Nederlands of Engels, net als de taal van Windows.
-3. Laat Dockey aan het eind starten.
+1. Download `Dockey-Setup-<version>.exe` from the
+   [latest release](https://github.com/tribalgfx/dockey/releases/latest).
+   Each release lists the SHA-256 checksum of the installer.
+2. Run it. Windows SmartScreen may warn because the file isn't signed
+   ("More info → Run anyway").
+   - No administrator rights needed: Dockey goes into
+     `%LOCALAPPDATA%\Programs\Dockey`, with a shortcut in the Start menu.
+   - The installer is in English or Dutch, following the Windows language.
+3. Let Dockey start at the end.
 
-Windows 11 heeft alles wat nodig is al aan boord. Op Windows 10 moet de
-[WebView2-runtime](https://developer.microsoft.com/microsoft-edge/webview2/)
-geïnstalleerd zijn; de installer waarschuwt als die ontbreekt.
+Windows 11 already has everything it needs. On Windows 10 the
+[WebView2 runtime](https://developer.microsoft.com/microsoft-edge/webview2/)
+must be installed; the installer warns if it's missing.
 
-Wil je de allernieuwste stand, of liever geen installer? Bij **Actions →
-Windows-build** staat van elke build op `main` de installer (`dockey-setup`) en
-los `dockey.exe` (`dockey-windows-x64`), dat je overal kunt neerzetten en
-starten. Die bestanden zijn alleen te downloaden met een GitHub-account en
-blijven 90 dagen staan.
+Want the very latest state, or rather no installer? Under **Actions →
+Windows-build**, every build on `main` has the installer (`dockey-setup`) and
+a standalone `dockey.exe` (`dockey-windows-x64`) that you can put anywhere and
+run. These files can only be downloaded with a GitHub account and are kept for
+90 days.
 
-### Bijwerken en verwijderen
+### Updating and uninstalling
 
-- **Bijwerken**: Dockey kijkt zelf of er een nieuwe versie is: een minuut na
-  het starten en daarna eens per dag, bij de
-  [releases](https://github.com/tribalgfx/dockey/releases). Is er een, dan
-  krijgt de startknop een stipje, en staat bovenaan het balkmenu (rechtsklik op
-  de balk) en het menu van het tray-icoon **Bijwerken naar versie …**. Daar zie
-  je wat er nieuw is en kies je **Nu bijwerken**: Dockey downloadt de
-  installer, controleert hem met het SHA-256-controlegetal dat GitHub bij de
-  release vermeldt (klopt dat niet, dan wordt hij weggegooid), en start hem.
-  De installer sluit Dockey netjes af, vervangt het programma en start Dockey
-  daarna opnieuw; je instellingen blijven staan. Zonder je klik wordt er niets
-  gedownload of geïnstalleerd. Het automatisch kijken zet je uit in
-  Instellingen → Updates; daar kun je ook meteen controleren.
+- **Updating**: Dockey checks for a new version by itself: a minute after
+  starting and then once a day, at the
+  [releases](https://github.com/tribalgfx/dockey/releases). If there is one,
+  the Start button gets a dot, and **Update to version …** appears at the top
+  of the bar menu (right-click the bar) and the tray icon's menu. There you see
+  what's new and choose **Update now**: Dockey downloads the installer, checks
+  it against the SHA-256 checksum GitHub lists for the release (if it doesn't
+  match, the file is thrown away), and runs it. The installer closes Dockey
+  cleanly, replaces the program and starts Dockey again; your settings stay.
+  Nothing is downloaded or installed without your click. Automatic checking
+  can be turned off in Settings → Updates; you can also check right away
+  there.
 
-  Dit kan Dockey vanaf versie 0.3.0. Heb je 0.2.0, werk dan één keer zelf bij
-  met de installer van de nieuwste release (zie hieronder); daarna gaat het
-  vanzelf.
+  Dockey can do this from version 0.3.0. If you have 0.2.0, update once
+  yourself with the installer from the latest release (see below); after that
+  it happens by itself.
 
-  Zelf bijwerken kan ook: draai de nieuwe `Dockey-Setup-<versie>.exe` van de
-  releases. Die sluit een draaiende Dockey netjes af (de Windows-taakbalk komt
-  even terug), vervangt het programma en laat je instellingen staan.
-  - Een oudere Dockey (van vóór de installer) kent dat afsluiten nog niet. De
-    installer vraagt dan of hij Dockey mag stoppen, stopt hem en zet daarna de
-    Windows-taakbalk terug.
-  - Draaide je Dockey als los `dockey.exe`: zodra de geïnstalleerde Dockey
-    start, wijst "Starten met Windows" naar de nieuwe plek. Het losse bestand
-    kun je daarna weggooien; je instellingen blijven gewoon staan.
-- **Verwijderen**: via Instellingen → Apps → Geïnstalleerde apps → Dockey.
-  Dockey sluit eerst netjes af, "Starten met Windows" wordt weggehaald, en je
-  kiest of je instellingen (in `%APPDATA%\Dockey`, ook de agenda-links) ook
-  weg moeten. Standaard blijven ze staan. Lukt het niet om Dockey te stoppen,
-  dan breekt het verwijderen af met een melding, zodat er geen half
-  verwijderde installatie achterblijft.
+  You can also update manually: run the new `Dockey-Setup-<version>.exe` from
+  the releases. It closes a running Dockey cleanly (the Windows taskbar comes
+  back briefly), replaces the program and keeps your settings.
+  - An older Dockey (from before the installer) doesn't know that way of
+    closing yet. The installer then asks whether it may stop Dockey, stops it
+    and then restores the Windows taskbar.
+  - If you ran Dockey as a standalone `dockey.exe`: as soon as the installed
+    Dockey starts, "Start with Windows" points to the new location. You can
+    delete the standalone file afterwards; your settings stay as they are.
+- **Uninstalling**: via Settings → Apps → Installed apps → Dockey. Dockey
+  closes cleanly first, "Start with Windows" is removed, and you choose
+  whether your settings (in `%APPDATA%\Dockey`, including the calendar links)
+  should go too. By default they stay. If Dockey can't be stopped, the
+  uninstall stops with a message, so no half-removed installation is left
+  behind.
 
-**Zonder vragen** (bijvoorbeeld in een script) installeer je met
-`Dockey-Setup-<versie>.exe /SILENT /SUPPRESSMSGBOXES` (of `/VERYSILENT` voor
-helemaal geen venster). Een draaiende Dockey wordt dan zonder vragen
-gestopt; Dockey start daarna niet vanzelf. Stil verwijderen gaat met
-`unins000.exe /SILENT /SUPPRESSMSGBOXES` in de installatiemap; je instellingen
-blijven dan staan.
+**Without questions** (for example in a script), install with
+`Dockey-Setup-<version>.exe /SILENT /SUPPRESSMSGBOXES` (or `/VERYSILENT` for no
+window at all). A running Dockey is then stopped without asking; Dockey
+doesn't start by itself afterwards. A silent uninstall is
+`unins000.exe /SILENT /SUPPRESSMSGBOXES` in the installation folder; your
+settings stay.
 
-`dockey.exe --quit` sluit een draaiende Dockey netjes af; de installer
-gebruikt dat ook. Draait er geen Dockey, dan doet het niets.
+`dockey.exe --quit` closes a running Dockey cleanly; the installer uses it
+too. If no Dockey is running, it does nothing.
 
-### Installer bouwen
+### Building the installer
 
-Nodig: Rust en de Visual Studio C++ Build Tools (zie hieronder) en
-[Inno Setup 6](https://jrsoftware.org/isinfo.php). Ontbreekt Inno Setup, dan
-installeert het script het met winget.
+Needed: Rust and the Visual Studio C++ Build Tools (see below) and
+[Inno Setup 6](https://jrsoftware.org/isinfo.php). If Inno Setup is missing,
+the script installs it with winget.
 
 ```powershell
 .\scripts\build-installer.ps1
 ```
 
-Het script bouwt `dockey.exe` en laat Inno Setup (`installer\Dockey.iss`)
-daar `artifacts\Dockey-Setup-<versie>.exe` van maken (ongeveer 3 MB). De
-versie komt uit `src-tauri\tauri.conf.json`; `artifacts\` staat in
-`.gitignore`. De Windows-build op GitHub maakt dezelfde installer bij elke
-push (het artifact `dockey-setup`).
+The script builds `dockey.exe` and has Inno Setup (`installer\Dockey.iss`)
+turn it into `artifacts\Dockey-Setup-<version>.exe` (about 3 MB). The version
+comes from `src-tauri\tauri.conf.json`; `artifacts\` is in `.gitignore`. The
+Windows build on GitHub makes the same installer on every push (the
+`dockey-setup` artifact).
 
-### Zelf bouwen (op Windows)
+### Building it yourself (on Windows)
 
-Met [Rust](https://rustup.rs) en de Visual Studio C++ Build Tools:
+With [Rust](https://rustup.rs) and the Visual Studio C++ Build Tools:
 
 ```bash
 cd src-tauri
@@ -236,102 +240,100 @@ cd src-tauri
 cargo build --release
 ```
 
-Het resultaat staat in `target\release\dockey.exe`. Node of npm is niet
-nodig: de interface is gewone HTML/CSS/JS zonder bouwstap.
+The result is in `target\release\dockey.exe`. Node or npm isn't needed: the
+interface is plain HTML/CSS/JS without a build step.
 
-## Als de Windows-taakbalk niet terugkomt
+## If the Windows taskbar doesn't come back
 
-Normaal zet Dockey de taakbalk terug bij afsluiten (ook na een crash, bij de
-volgende start). Mocht hij toch wegblijven of op "automatisch verbergen" blijven
-staan:
+Normally Dockey restores the taskbar when it exits (also after a crash, on the
+next start). Should it still stay away or remain on "auto-hide":
 
 ```bash
 dockey.exe --restore
 ```
 
-Lukt ook dat niet: herstart Verkenner via Taakbeheer (Ctrl+Shift+Esc →
-"Windows Verkenner" → Opnieuw starten) en zet "Taakbalk automatisch verbergen"
-uit in Instellingen → Persoonlijke instellingen → Taakbalk.
+If that doesn't work either: restart Explorer via Task Manager
+(Ctrl+Shift+Esc → "Windows Explorer" → Restart) and turn off "Automatically
+hide the taskbar" in Settings → Personalization → Taskbar.
 
-Instellingen staan in `%APPDATA%\Dockey\config.json`. Dat bestand weggooien
-zet alles terug naar de standaard. Is het bestand onleesbaar geraakt
-(bijvoorbeeld na een crash tijdens het opslaan), dan start Dockey met de
-standaardinstellingen en bewaart het een kopie als `config.onleesbaar.json`.
-Problemen (zoals een icoon dat niet lukt) komen in
-`%APPDATA%\Dockey\dockey.log`.
+Settings are stored in `%APPDATA%\Dockey\config.json`. Deleting that file
+resets everything to the defaults. If the file has become unreadable (for
+example after a crash while saving), Dockey starts with the default settings
+and keeps a copy as `config.onleesbaar.json`. Problems (such as an icon that
+can't be loaded) go into `%APPDATA%\Dockey\dockey.log`.
 
-## Bekende beperkingen
+## Known limitations
 
-- **Systeemvak**: Dockey meldt zich als tweede systeemvak aan en geeft alles
-  door aan de taakbalk van Windows. Een app die niet reageert op het
-  "opnieuw aanmelden" bij het starten van Dockey, verschijnt pas na een
-  herstart van die app. Volume, netwerk en accu van Windows zelf zijn geen
-  systeemvakpictogrammen; daarvoor heeft Dockey eigen widgets. Uitzetten kan
-  bij de widgets (Systeemvak).
-- **Alleen het primaire scherm** krijgt een balk.
-- **Verticale dock op een laag scherm**: past niet alles, dan scrolt de lijst
-  met apps; zet in dat geval wat widgets uit.
-- **Glas vervaagt alleen op Windows 11.** Daar vervaagt Windows het
-  bureaublad achter de balk en de panelen (acrylic), met de ronde hoeken van
-  Windows zelf (8 px, dus minder rond dan de andere stijlen). Op Windows 10
-  is Glas doorschijnend zonder vervaging.
-- **Vensters van programma's die als administrator draaien** kan Dockey niet
-  minimaliseren of sluiten (Windows blokkeert dat), tenzij Dockey zelf ook
-  als administrator draait.
-- **Vastgemaakte Store-apps** uit de Windows-taakbalk worden niet automatisch
-  overgenomen; maak ze vast via rechtsklik zodra ze openstaan.
-- Geen venstervoorbeelden bij aanwijzen, geen slepen om te ordenen (wel
-  "Naar links/rechts" in het menu).
+- **System tray**: Dockey registers as a second system tray and passes
+  everything on to the Windows taskbar. An app that doesn't respond to the
+  "register again" when Dockey starts only appears after that app restarts.
+  Windows' own volume, network and battery aren't tray icons; Dockey has its
+  own widgets for those. You can turn the tray off under widgets (Tray).
+- **Only the primary screen** gets a bar.
+- **Vertical dock on a short screen**: if not everything fits, the app list
+  scrolls; in that case, turn off some widgets.
+- **Glass only blurs on Windows 11.** There Windows blurs the desktop behind
+  the bar and the panels (acrylic), with Windows' own rounded corners (8 px,
+  so less round than the other styles). On Windows 10, Glass is translucent
+  without blur.
+- **Windows of programs running as administrator** can't be minimised or
+  closed by Dockey (Windows blocks that), unless Dockey itself also runs as
+  administrator.
+- **Pinned Store apps** from the Windows taskbar aren't taken over
+  automatically; pin them with a right click once they're open.
+- No window previews on hover, no dragging to reorder apps (there is "Move
+  left/right" in the menu).
 
-## De interface bekijken zonder Windows
+## Viewing the interface without Windows
 
-De map `ui/` werkt ook los in een browser, met een nagebootste backend
+The `ui/` folder also works on its own in a browser, with a simulated backend
 (`ui/mock.js`):
 
 ```bash
 python3 -m http.server 8765 --directory ui
 ```
 
-Open dan `http://127.0.0.1:8765/index.html`. Met URL-parameters kies je een
-variant, bijvoorbeeld `?theme=glas&size=l&layout=bar&pos=left&popup=settings`;
-`?max=1` bootst een gemaximaliseerd venster na.
+Then open `http://127.0.0.1:8765/index.html`. URL parameters pick a variant,
+for example `?theme=glas&size=l&layout=bar&pos=left&popup=settings`;
+`?max=1` simulates a maximised window.
 
-## Opbouw
+## Structure
 
 ```
-ui/                  interface (HTML/CSS/JS, geen bouwstap)
-  index.html, dock.js    de balk zelf
-  popup.html, popup.js   het paneel: menu's, instellingen, kalender
-  mock.js                nagebootste backend voor in de browser
-src-tauri/           Windows-kant (Rust, Tauri 2)
-  src/main.rs            vensters, commando's, achtergrondthreads
-  src/shell.rs           open vensters volgen, activeren/minimaliseren/sluiten
-  src/taskbar.rs         Windows-taakbalk verbergen en terugzetten
-  src/appbar.rs          schermruimte reserveren
-  src/backdrop.rs        echte vervaging (acrylic) achter het glasthema
-  src/icons.rs           app-iconen ophalen
-  src/pins.rs            vastgemaakte apps uit Windows overnemen
-  src/stats.rs           CPU, geheugen, accu, netwerk, volume
-  src/media.rs           nu-speelt en afspeelknoppen
-  src/keys.rs            Windows-sneltoetsen (Start, Taakweergave, …)
-  src/config.rs          instellingen
-  src/update.rs          nieuwe versie zoeken, downloaden, controleren en installeren
+ui/                  interface (HTML/CSS/JS, no build step)
+  index.html, dock.js    the bar itself
+  popup.html, popup.js   the panel: menus, settings, calendar
+  mock.js                simulated backend for the browser
+src-tauri/           Windows side (Rust, Tauri 2)
+  src/main.rs            windows, commands, background threads
+  src/shell.rs           tracking open windows, activate/minimise/close
+  src/taskbar.rs         hiding and restoring the Windows taskbar
+  src/appbar.rs          reserving screen space
+  src/backdrop.rs        real blur (acrylic) behind the Glass theme
+  src/icons.rs           fetching app icons
+  src/pins.rs            taking over pinned apps from Windows
+  src/stats.rs           CPU, memory, battery, network, volume
+  src/media.rs           now playing and playback controls
+  src/keys.rs            Windows shortcuts (Start, Task view, …)
+  src/config.rs          settings
+  src/update.rs          finding, downloading, checking and installing a new version
 ```
 
-Het logo is een D met ezelsoren (een knipoog naar *Donkie*); het gat in de D
-is de dock en het streepje eronder de indicator van een actieve app. De
-bronbestanden staan in `src-tauri/icons/`: `icon.svg` voor 32 px en groter,
-`icon-klein.svg` (dikker, zonder details) voor 16–24 px.
+The code comments are in Dutch.
 
-Het weer komt van [Open-Meteo](https://open-meteo.com) (geen account of sleutel
-nodig). Voor updates vraagt Dockey eens per dag de nieuwste release op bij
-GitHub; daarbij gaat niets over jou of je pc mee (uit te zetten in Instellingen
-→ Updates). Verder maakt Dockey alleen verbinding met de adressen die je zelf
-invult (agenda's en eigen widgets).
+The logo is a D with donkey ears (a nod to *Donkie*); the hole in the D is the
+dock and the line underneath is the indicator of an active app. The source
+files are in `src-tauri/icons/`: `icon.svg` for 32 px and up,
+`icon-klein.svg` (bolder, without details) for 16–24 px.
 
-## Licentie
+The weather comes from [Open-Meteo](https://open-meteo.com) (no account or key
+needed). For updates, Dockey asks GitHub for the latest release once a day;
+nothing about you or your PC is sent along (can be turned off in Settings →
+Updates). Otherwise Dockey only connects to the addresses you fill in yourself
+(calendars and custom widgets).
 
-Dockey valt onder de [GNU General Public License, versie 3 of later](LICENSE)
-(GPL-3.0-or-later). Je mag het gebruiken, aanpassen en verspreiden; een
-aangepaste versie die je verspreidt, valt dan ook onder de GPL, met de broncode
-erbij.
+## License
+
+Dockey is licensed under the [GNU General Public License, version 3 or later](LICENSE)
+(GPL-3.0-or-later). You may use, modify and distribute it; a modified version
+you distribute is then also under the GPL, with the source code included.
