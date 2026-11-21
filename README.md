@@ -134,11 +134,11 @@ naam van de dienst.
 
 ## Installeren
 
-1. Ga op GitHub naar **Actions → Windows-build**, open de laatste
-   geslaagde run en download het artifact `dockey-setup`.
-2. Pak het uit en start `Dockey-Setup-<versie>.exe`. Windows SmartScreen kan
-   waarschuwen omdat het bestand niet ondertekend is ("Meer informatie → Toch
-   uitvoeren").
+1. Download `Dockey-Setup-<versie>.exe` bij de
+   [nieuwste release](https://github.com/tribalgfx/dockey/releases/latest).
+   Bij elke release staat het SHA-256-controlegetal van de installer.
+2. Start het. Windows SmartScreen kan waarschuwen omdat het bestand niet
+   ondertekend is ("Meer informatie → Toch uitvoeren").
    - Er is geen beheerder nodig: Dockey komt in
      `%LOCALAPPDATA%\Programs\Dockey`, met een snelkoppeling in het Startmenu.
    - De installer is Nederlands of Engels, net als de taal van Windows.
@@ -148,12 +148,16 @@ Windows 11 heeft alles wat nodig is al aan boord. Op Windows 10 moet de
 [WebView2-runtime](https://developer.microsoft.com/microsoft-edge/webview2/)
 geïnstalleerd zijn; de installer waarschuwt als die ontbreekt.
 
-Liever geen installer? Het artifact `dockey-windows-x64` is alleen
-`dockey.exe`; dat kun je overal neerzetten en starten.
+Wil je de allernieuwste stand, of liever geen installer? Bij **Actions →
+Windows-build** staat van elke build op `main` de installer (`dockey-setup`) en
+los `dockey.exe` (`dockey-windows-x64`), dat je overal kunt neerzetten en
+starten. Die bestanden zijn alleen te downloaden met een GitHub-account en
+blijven 90 dagen staan.
 
 ### Bijwerken en verwijderen
 
-- **Bijwerken**: draai de nieuwe `Dockey-Setup-<versie>.exe`. Die sluit een
+- **Bijwerken**: draai de nieuwe `Dockey-Setup-<versie>.exe` van de
+  [releases](https://github.com/tribalgfx/dockey/releases). Die sluit een
   draaiende Dockey netjes af (de Windows-taakbalk komt even terug), vervangt
   het programma en laat je instellingen staan.
   - Een oudere Dockey (van vóór de installer) kent dat afsluiten nog niet. De
