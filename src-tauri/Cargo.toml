@@ -1,6 +1,6 @@
 [package]
 name = "dockey"
-version = "0.3.2"
+version = "0.3.3"
 description = "Eigen taakbalk/dock voor Windows 11"
 license = "GPL-3.0-or-later"
 edition = "2021"
