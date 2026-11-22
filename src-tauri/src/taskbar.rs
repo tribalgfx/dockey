@@ -49,13 +49,13 @@ fn appbar_data() -> Option<APPBARDATA> {
 
 fn get_state() -> Option<u32> {
     let mut abd = appbar_data()?;
-    Some(unsafe { SHAppBarMessage(ABM_GETSTATE, &mut abd) } as u32)
+    Some(crate::tray::bypass(|| unsafe { SHAppBarMessage(ABM_GETSTATE, &mut abd) }) as u32)
 }
 
 fn set_state(state: u32) {
     if let Some(mut abd) = appbar_data() {
         abd.lParam = LPARAM(state as isize);
-        unsafe { SHAppBarMessage(ABM_SETSTATE, &mut abd) };
+        crate::tray::bypass(|| unsafe { SHAppBarMessage(ABM_SETSTATE, &mut abd) });
     }
 }
 

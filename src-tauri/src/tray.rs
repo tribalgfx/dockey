@@ -5,8 +5,9 @@
 //! vindt. Dockey maakt zo'n venster aan en houdt het bovenaan, zodat de
 //! berichten bij Dockey aankomen. Alles wat binnenkomt, gaat ook door naar de
 //! taakbalk van Windows: die blijft compleet, ook als Dockey stopt. Berichten
-//! die niet over pictogrammen gaan (zoals AppBar-berichten, ook die van Dockey
-//! zelf), geven we ongewijzigd door.
+//! die niet over pictogrammen gaan (zoals AppBar-berichten van andere apps),
+//! geven we ongewijzigd door. Dockey's eigen AppBar-berichten gaan buiten ons
+//! venster om (zie `bypass`).
 //!
 //! Na het aanmelden vragen we alle apps met "TaskbarCreated" hun pictogram
 //! opnieuw door te geven; bij het stoppen nogmaals, voor de zekerheid.
@@ -91,6 +92,29 @@ fn pid_of(h: HWND) -> u32 {
     let mut pid = 0u32;
     unsafe { GetWindowThreadProcessId(h, Some(&mut pid)) };
     pid
+}
+
+/// Voert AppBar-berichten van Dockey zelf uit met ons venster even onderaan.
+/// `SHAppBarMessage` stuurt naar het eerste `Shell_TrayWnd`; is dat het onze,
+/// dan zit het "systeemvak" in hetzelfde proces en geeft shell32 een interne
+/// verwijzing mee in plaats van gedeeld geheugen. Explorer kan die na het
+/// doorsturen niet openen en negeert dan o.a. ABM_SETPOS: de schermruimte voor
+/// de balk wordt niet gereserveerd en gemaximaliseerde vensters vallen eroverheen.
+pub fn bypass<R>(f: impl FnOnce() -> R) -> R {
+    let own = HWND_SELF.load(Ordering::SeqCst);
+    if own == 0 {
+        return f();
+    }
+    let h = HWND(own as *mut c_void);
+    let flags = SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE;
+    unsafe {
+        let _ = SetWindowPos(h, Some(HWND_BOTTOM), 0, 0, 0, 0, flags);
+    }
+    let result = f();
+    unsafe {
+        let _ = SetWindowPos(h, Some(HWND_TOPMOST), 0, 0, 0, 0, flags);
+    }
+    result
 }
 
 /// De echte taakbalk van Windows (het `Shell_TrayWnd` dat niet van Dockey is).

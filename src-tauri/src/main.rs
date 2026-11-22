@@ -464,9 +464,11 @@ fn shell_thread(app: AppHandle) {
 
         // Elke 2 s: is het scherm of het werkgebied veranderd (resolutie,
         // schaal, herstart van Explorer)? Dan de balk opnieuw plaatsen.
+        // Ook als Windows onze gereserveerde ruimte kwijt is.
         if tick % 8 == 0 {
             let now = shell::primary_geometry();
-            if now != geometry {
+            let lost = window_hwnd(&app, "dock").is_some_and(appbar::lost);
+            if now != geometry || lost {
                 geometry = now;
                 request_layout(&app);
             }
@@ -586,6 +588,9 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     if let Some(dock) = handle.get_webview_window("dock") {
         let _ = dock.show();
     }
+    // Nogmaals nu de balk zichtbaar is: Explorer telt een verborgen AppBar niet
+    // mee bij het werkgebied.
+    layout(&handle);
     backdrop::apply(&handle, "dock");
     // Pas ná het tonen: het vensterframework zet de vensterstijl opnieuw
     // wanneer het een venster toont.
