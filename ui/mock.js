@@ -2,6 +2,7 @@
 // In de echte app wordt dit bestand niet geladen.
 //
 // URL-parameters: ?lang=en&theme=wit&size=l&layout=bar&pos=top&max=1&popup=settings|calendar|menu|dock-menu
+//                 &geenvoorbeelden (venstervoorbeelden uit)
 
 function create() {
   const params = new URLSearchParams(location.search);
@@ -52,6 +53,7 @@ function create() {
     language: params.get('lang') ?? 'auto',
     transparency: Number(params.get('transparantie') ?? 0),
     updateCheck: true,
+    previews: !params.has('geenvoorbeelden'),
     customWidgets: params.has('custom')
       ? [
           { id: 'st', kind: 'status', name: 'Server', url: 'https://server.voorbeeld/status.json', template: '', icon: '', openUrl: '', interval: 60, insecure: true },
@@ -210,6 +212,27 @@ function create() {
   };
   document.addEventListener('mousedown', () => hidePopup(true), true);
 
+  // De venstervoorbeelden: ook een eigen venster, hier een tweede iframe. Een
+  // echt beeld (DWM-thumbnail) is er niet; preview.js tekent een nepvenster.
+  const pvFrame = document.createElement('iframe');
+  pvFrame.className = 'mock-popup off';
+  const pv = { serial: 0, anchorX: 0, anchorY: 0, visible: false };
+  const pvFramed = new Promise((resolve) => pvFrame.addEventListener('load', resolve, { once: true }));
+  pvFrame.src = 'preview.html';
+  document.body.append(pvFrame);
+  const hidePreview = () => {
+    pv.serial++;
+    if (!pv.visible) return;
+    pv.visible = false;
+    pvFrame.classList.add('off');
+    bus.emit('preview:closed');
+  };
+  // Verhouding van een nepvenster; geminimaliseerd = geen beeld.
+  const ratioOf = (hwnd) => {
+    const w = windows.find((x) => x.hwnd === hwnd);
+    return !w || w.min ? null : w.key.endsWith('mail.exe') ? 4 / 3 : 16 / 10;
+  };
+
   const commands = {
     get_initial: () => ({ config: structuredClone(config), shell: snapshot(), stats: { ...stats }, media: { ...media }, version: '0.2.0', update: mockUpdate }),
     check_update: async () => ({ update: mockUpdate, current: '0.2.0' }),
@@ -292,6 +315,7 @@ function create() {
         return false;
       }
       Object.assign(popup, { id, anchorX, anchorY });
+      hidePreview();
       await framed;
       const strip = document.getElementById('strip').getBoundingClientRect();
       const pos = config.position;
@@ -315,6 +339,32 @@ function create() {
       popup.visible = true;
     },
     close_popup: () => hidePopup(false),
+    open_preview: async ({ key, name, icon, windows: list, anchorX, anchorY }) => {
+      if (!config.previews || popup.visible || !list.length) return false;
+      const serial = ++pv.serial;
+      Object.assign(pv, { anchorX, anchorY });
+      await pvFramed;
+      const ws = list.map((w) => ({ ...w, ratio: ratioOf(w.hwnd) }));
+      bus.emit('preview:render', { serial, key, name, icon, windows: ws, maxWidth: innerWidth });
+      return true;
+    },
+    preview_ready: ({ serial, width, height }) => {
+      if (serial !== pv.serial) return;
+      const strip = document.getElementById('strip').getBoundingClientRect();
+      const clamp = (v, max) => Math.max(0, Math.min(v, max));
+      const cx = clamp(pv.anchorX - width / 2, innerWidth - width);
+      const cy = clamp(pv.anchorY - height / 2, innerHeight - height);
+      const [x, y] = {
+        top: [cx, strip.bottom],
+        bottom: [cx, strip.top - height],
+        left: [strip.right, cy],
+        right: [strip.left - width, cy],
+      }[config.position];
+      Object.assign(pvFrame.style, { left: `${x}px`, top: `${y}px`, width: `${width}px`, height: `${height}px` });
+      pvFrame.classList.remove('off');
+      pv.visible = true;
+    },
+    close_preview: hidePreview,
   };
 
   document.documentElement.classList.add('mock');

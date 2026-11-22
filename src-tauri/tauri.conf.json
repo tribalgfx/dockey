@@ -44,6 +44,24 @@
         "visible": false,
         "focus": false,
         "dragDropEnabled": false
+      },
+      {
+        "label": "preview",
+        "title": "Dockey voorbeelden",
+        "url": "preview.html",
+        "width": 300,
+        "height": 200,
+        "decorations": false,
+        "transparent": true,
+        "shadow": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "resizable": false,
+        "maximizable": false,
+        "minimizable": false,
+        "visible": false,
+        "focus": false,
+        "dragDropEnabled": false
       }
     ],
     "security": {

@@ -57,6 +57,7 @@ sight.
 | --- | --- |
 | Click an app | Start it, bring it to the front, or (if it's already active) minimise it |
 | Click an app with several windows | List of windows |
+| Rest the pointer on an app | Live previews of its windows; click one to bring it to the front, × closes it (can be turned off in Settings) |
 | Middle click or Shift+click on an app | New window |
 | Right-click an app | Menu: windows, pin/unpin, move, close |
 | Button with the dot grid | Windows Start menu |
@@ -281,8 +282,7 @@ can't be loaded) go into `%APPDATA%\Dockey\dockey.log`.
   administrator.
 - **Pinned Store apps** from the Windows taskbar aren't taken over
   automatically; pin them with a right click once they're open.
-- No window previews on hover, no dragging to reorder apps (there is "Move
-  left/right" in the menu).
+- No dragging to reorder apps (there is "Move left/right" in the menu).
 
 ## Viewing the interface without Windows
 

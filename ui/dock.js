@@ -148,12 +148,105 @@ function ensureIcon(tile, g) {
 
 const tileIcon = (tile) => tile.querySelector('img')?.src;
 
+// ------------------------------------------------------------ voorbeelden --
+//
+// Blijft de muis even boven een app met open vensters, dan toont een apart
+// venster live voorbeelden ervan (zie preview.js en preview.rs). Gaat de muis
+// naar een ander icoon terwijl het voorbeeld openstaat, dan wisselt het
+// meteen. Van het icoon naar het voorbeeld is er wat speling; een klik of
+// rechtsklik sluit het, en dan komt het pas terug na opnieuw hoveren.
+
+const PREVIEW_DELAY = 400;
+const PREVIEW_GRACE = 300;
+const preview = {
+  key: null, // groep waarvoor een voorbeeld openstaat (of gevraagd is)
+  sig: '', // wat er getoond wordt; verandert het, dan opnieuw tekenen
+  serial: 0, // nummer van de laatste aanvraag bij de backend
+  over: false, // muis boven het voorbeeldvenster
+  muted: null, // groep waarop net geklikt is: geen voorbeeld tot de muis weggaat
+  showTimer: 0,
+  hideTimer: 0,
+};
+
+const previewsOn = () => state.config?.previews !== false;
+const previewSig = (g) => JSON.stringify(g.windows.map((w) => [w.hwnd, w.title, w.active, w.min]));
+
+function showPreview(tile) {
+  const g = tile.group;
+  if (!previewsOn() || !g?.windows.length || openId) return hidePreview();
+  const r = tile.getBoundingClientRect();
+  preview.key = g.key;
+  preview.sig = previewSig(g);
+  const req = ++preview.serial;
+  invoke('open_preview', {
+    key: g.key,
+    name: g.name,
+    icon: tileIcon(tile) ?? null,
+    windows: g.windows.map((w) => ({ hwnd: w.hwnd, title: w.title, active: w.active })),
+    anchorX: r.left + r.width / 2,
+    anchorY: r.top + r.height / 2,
+  }).then((ok) => {
+    if (!ok && req === preview.serial) preview.key = null;
+  });
+}
+
+function hidePreview() {
+  clearTimeout(preview.showTimer);
+  clearTimeout(preview.hideTimer);
+  if (preview.key == null) return;
+  preview.key = null;
+  preview.serial++;
+  invoke('close_preview');
+}
+
+function scheduleHide() {
+  clearTimeout(preview.hideTimer);
+  preview.hideTimer = setTimeout(() => {
+    if (!preview.over) hidePreview();
+  }, PREVIEW_GRACE);
+}
+
+function previewEnter(tile) {
+  clearTimeout(preview.hideTimer);
+  clearTimeout(preview.showTimer);
+  if (preview.muted === tile.group.key) return;
+  if (preview.key != null) {
+    if (preview.key !== tile.group.key) showPreview(tile);
+    return;
+  }
+  preview.showTimer = setTimeout(() => showPreview(tile), PREVIEW_DELAY);
+}
+
+function previewLeave(tile) {
+  clearTimeout(preview.showTimer);
+  if (preview.muted === tile.group.key) preview.muted = null;
+  scheduleHide();
+}
+
+/** Na een klik op een icoon: voorbeeld weg, en niet meteen terug. */
+function mutePreview(tile) {
+  preview.muted = tile.group.key;
+  hidePreview();
+}
+
+/** Nieuwe stand van de vensters: een open voorbeeld volgt mee. */
+function refreshPreview() {
+  if (preview.key == null) return;
+  const tile = tiles.get(preview.key);
+  if (!tile || !tile.group.windows.length) return hidePreview();
+  if (previewSig(tile.group) !== preview.sig) showPreview(tile);
+}
+
 function createTile(g) {
   const tile = el('button', 'tile app');
   tile.dataset.popup = `menu:${g.key}`;
   const letter = el('span', 'letter');
   letter.textContent = (g.name || '?').trim().charAt(0);
   tile.append(letter);
+
+  tile.addEventListener('mouseenter', () => previewEnter(tile));
+  tile.addEventListener('mouseleave', () => previewLeave(tile));
+  tile.addEventListener('pointerdown', () => mutePreview(tile));
 
   tile.addEventListener('click', (e) => {
     const group = tile.group;
@@ -193,7 +286,8 @@ function renderApps() {
     tile.classList.toggle('running', n > 0);
     tile.classList.toggle('multi', n > 1);
     tile.classList.toggle('active', g.windows.some((w) => w.active));
-    tile.title = n === 1 ? g.windows[0].title || g.name : n > 1 ? t('app.windows', g.name, n) : g.name;
+    // Met voorbeelden staat de titel al in het voorbeeld; geen tooltip erbovenop.
+    tile.title = n && previewsOn() ? '' : n === 1 ? g.windows[0].title || g.name : n > 1 ? t('app.windows', g.name, n) : g.name;
     if (tile !== cursor) container.insertBefore(tile, cursor);
     else cursor = cursor.nextSibling;
   }
@@ -203,6 +297,7 @@ function renderApps() {
       tiles.delete(key);
     }
   }
+  refreshPreview();
 }
 
 // ---------------------------------------------------------------- widgets --
@@ -687,7 +782,8 @@ function setConfig(config) {
   const languageChanged = applyLook(config) && !first;
   markUpdate();
   applyMaximized();
-  if (languageChanged) renderApps(); // titels van de apps
+  if (!previewsOn()) hidePreview();
+  if (!first) renderApps(); // titels van de apps (taal, voorbeelden aan/uit)
   if (widgetsChanged || languageChanged) buildWidgets();
   else {
     if (orderChanged) arrangeWidgets();
@@ -730,6 +826,7 @@ function markUpdate() {
 // zelf geen focus, dus het paneel merkt die klik niet vanzelf.)
 document.addEventListener('pointerdown', (e) => {
   if (e.button === 0 && !e.target.closest('button, .w')) invoke('close_popup');
+  if (!e.target.closest('.tile.app')) hidePreview();
 });
 
 // Rechtsklik op een lege plek (of op de startknop): het balkmenu.
@@ -749,6 +846,15 @@ await Promise.all([
     update('media');
   }),
   listen('popup:closed', () => markOpen(null)),
+  listen('preview:closed', () => {
+    preview.key = null;
+    preview.over = false;
+  }),
+  listen('preview:hover', (over) => {
+    preview.over = over;
+    if (over) clearTimeout(preview.hideTimer);
+    else scheduleHide();
+  }),
   listen('open-settings', openSettings),
   listen('open-update', openUpdate),
   listen('update', (update) => {

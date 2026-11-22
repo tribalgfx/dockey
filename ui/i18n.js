@@ -129,6 +129,8 @@ const nl = {
   'taskbar.hint': 'Bij afsluiten van Dockey komt hij terug zoals hij was.',
   'reserve.label': 'Schermruimte reserveren',
   'reserve.hint': 'Gemaximaliseerde vensters stoppen bij de balk.',
+  'previews.label': 'Venstervoorbeelden',
+  'previews.hint': 'Live voorbeelden van de vensters als de muis boven een app blijft.',
   'autostart.label': 'Starten met Windows',
 
   // Eigen widgets
@@ -352,6 +354,8 @@ const en = {
   'taskbar.hint': 'When Dockey exits, it comes back the way it was.',
   'reserve.label': 'Reserve screen space',
   'reserve.hint': 'Maximised windows stop at the bar.',
+  'previews.label': 'Window previews',
+  'previews.hint': 'Live previews of the windows when the pointer rests on an app.',
   'autostart.label': 'Start with Windows',
 
   'custom.name': 'Custom widget',

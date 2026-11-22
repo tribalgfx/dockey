@@ -9,6 +9,7 @@ mod keys;
 mod media;
 mod net;
 mod pins;
+mod preview;
 mod shell;
 mod stats;
 mod taskbar;
@@ -49,6 +50,7 @@ struct AppState {
     media: Mutex<Option<media::Media>>,
     icons: Mutex<HashMap<String, String>>,
     popup: Mutex<Popup>,
+    preview: Mutex<preview::Preview>,
     /// Een nieuwere release die nog niet geïnstalleerd is.
     update: Mutex<Option<update::Release>>,
 }
@@ -171,6 +173,7 @@ fn set_backdrop(app: AppHandle, window: tauri::WebviewWindow, rect: Option<backd
     let label: &'static str = match window.label() {
         "dock" => "dock",
         "popup" => "popup",
+        "preview" => "preview",
         _ => return,
     };
     backdrop::store(label, rect, round);
@@ -320,6 +323,7 @@ fn open_popup(
     anchor_y: f64,
 ) -> bool {
     let Some(dock) = app.get_webview_window("dock") else { return false };
+    hide_preview(&app);
     let scale = dock.scale_factor().unwrap_or(1.0);
     let origin = dock.outer_position().map(|p| (p.x, p.y)).unwrap_or((0, 0));
     {
@@ -353,34 +357,48 @@ fn open_popup(
     true
 }
 
+/// Linksboven voor een venster van `w`×`h` fysieke pixels naast de balk,
+/// gecentreerd op `anchor` (schermpixels) en binnen het scherm.
+fn beside_dock(app: &AppHandle, anchor: (i32, i32), w: i32, h: i32) -> Option<(i32, i32)> {
+    let dock = app.get_webview_window("dock")?;
+    let monitor = dock.primary_monitor().ok()??;
+    let (dock_pos, dock_size) = (dock.outer_position().ok()?, dock.outer_size().ok()?);
+    let (mon_l, mon_t) = (monitor.position().x, monitor.position().y);
+    let (mon_r, mon_b) = (mon_l + monitor.size().width as i32, mon_t + monitor.size().height as i32);
+    let edge = app.state::<AppState>().config.lock().unwrap().edge();
+    let centered_x = (anchor.0 - w / 2).min(mon_r - w).max(mon_l);
+    let centered_y = (anchor.1 - h / 2).min(mon_b - h).max(mon_t);
+    Some(match edge {
+        Edge::Top => (centered_x, dock_pos.y + dock_size.height as i32),
+        Edge::Bottom => (centered_x, (dock_pos.y - h).max(mon_t)),
+        Edge::Left => (dock_pos.x + dock_size.width as i32, centered_y),
+        Edge::Right => ((dock_pos.x - w).max(mon_l), centered_y),
+    })
+}
+
+/// Schaal van het scherm met de balk.
+fn dock_scale(app: &AppHandle) -> f64 {
+    app.get_webview_window("dock")
+        .and_then(|d| d.primary_monitor().ok().flatten())
+        .map(|m| m.scale_factor())
+        .unwrap_or(1.0)
+}
+
 /// `width`/`height` = gemeten grootte van de paneelinhoud in CSS-pixels.
 #[tauri::command(async)]
 fn popup_ready(app: AppHandle, state: State<AppState>, width: f64, height: f64) {
-    let (Some(dock), Some(popup)) = (app.get_webview_window("dock"), app.get_webview_window("popup")) else { return };
-    let Ok(Some(monitor)) = dock.primary_monitor() else { return };
-    let (Ok(dock_pos), Ok(dock_size), Ok(hwnd)) = (dock.outer_position(), dock.outer_size(), popup.hwnd()) else { return };
-
-    let scale = monitor.scale_factor();
+    let Some(popup) = app.get_webview_window("popup") else { return };
+    let Ok(hwnd) = popup.hwnd() else { return };
+    let scale = dock_scale(&app);
     let (w, h) = ((width * scale).ceil() as i32, (height * scale).ceil() as i32);
-    let (mon_l, mon_t) = (monitor.position().x, monitor.position().y);
-    let (mon_r, mon_b) = (mon_l + monitor.size().width as i32, mon_t + monitor.size().height as i32);
-    let edge = state.config.lock().unwrap().edge();
-
-    let (anchor_x, anchor_y) = {
+    let anchor = {
         let mut p = state.popup.lock().unwrap();
         p.visible = true;
         p.blurred_at = None;
         (p.anchor_x, p.anchor_y)
     };
     // Naast de balk, gecentreerd op het aangeklikte element, binnen het scherm.
-    let centered_x = (anchor_x - w / 2).min(mon_r - w).max(mon_l);
-    let centered_y = (anchor_y - h / 2).min(mon_b - h).max(mon_t);
-    let (x, y) = match edge {
-        Edge::Top => (centered_x, dock_pos.y + dock_size.height as i32),
-        Edge::Bottom => (centered_x, (dock_pos.y - h).max(mon_t)),
-        Edge::Left => (dock_pos.x + dock_size.width as i32, centered_y),
-        Edge::Right => ((dock_pos.x - w).max(mon_l), centered_y),
-    };
+    let Some((x, y)) = beside_dock(&app, anchor, w, h) else { return };
 
     shell::place(hwnd, x, y, w, h);
     let _ = popup.show();
@@ -411,6 +429,154 @@ fn close_popup(app: AppHandle) {
     hide_popup(&app, false);
 }
 
+// ---------------------------------------------------------- voorbeelden --
+//
+// Live voorbeelden van de vensters van een app als je de muis boven het
+// icoon houdt (zie preview.rs). De balk regelt het hoveren (vertraging,
+// speling); hier koppelen we de thumbnails en tonen we het venster zonder
+// het te activeren.
+
+#[derive(serde::Deserialize, serde::Serialize, Clone)]
+struct PreviewWindow {
+    hwnd: isize,
+    title: String,
+    #[serde(default)]
+    active: bool,
+    /// Breedte/hoogte van het venster; ontbreekt als er geen beeld is.
+    #[serde(default)]
+    ratio: Option<f64>,
+}
+
+/// Plek van een thumbnail binnen het voorbeeldvenster, in CSS-pixels.
+#[derive(serde::Deserialize)]
+struct PreviewSlot {
+    hwnd: isize,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+}
+
+/// `anchor_x`/`anchor_y` = midden van het icoon, in CSS-pixels binnen de balk.
+/// Geeft `false` als er geen voorbeeld komt (uitgezet, of er staat een paneel open).
+#[tauri::command(async)]
+#[allow(clippy::too_many_arguments)]
+fn open_preview(
+    app: AppHandle,
+    state: State<AppState>,
+    key: String,
+    name: String,
+    icon: Option<String>,
+    mut windows: Vec<PreviewWindow>,
+    anchor_x: f64,
+    anchor_y: f64,
+) -> bool {
+    if !state.config.lock().unwrap().previews || state.popup.lock().unwrap().visible || windows.is_empty() {
+        return false;
+    }
+    let (Some(dock), Some(dest)) = (app.get_webview_window("dock"), window_hwnd(&app, "preview")) else { return false };
+    let scale = dock.scale_factor().unwrap_or(1.0);
+    let origin = dock.outer_position().map(|p| (p.x, p.y)).unwrap_or((0, 0));
+    let max_width = dock
+        .primary_monitor()
+        .ok()
+        .flatten()
+        .map(|m| m.size().width as f64 / m.scale_factor())
+        .unwrap_or(1200.0);
+
+    let serial = {
+        let mut p = state.preview.lock().unwrap();
+        p.serial += 1;
+        p.key = key.clone();
+        p.anchor = (origin.0 + (anchor_x * scale).round() as i32, origin.1 + (anchor_y * scale).round() as i32);
+        let hwnds: Vec<isize> = windows.iter().map(|w| w.hwnd).collect();
+        let ratios = p.sync(dest, &hwnds);
+        for w in &mut windows {
+            w.ratio = ratios.get(&w.hwnd).copied();
+        }
+        p.serial
+    };
+    let _ = app.emit_to(
+        "preview",
+        "preview:render",
+        json!({ "serial": serial, "key": key, "name": name, "icon": icon, "windows": windows, "maxWidth": max_width }),
+    );
+    true
+}
+
+/// De interface heeft de voorbeelden getekend: `width`/`height` = grootte van
+/// het venster, `slots` = waar de thumbnails komen (alles in CSS-pixels).
+#[tauri::command(async)]
+fn preview_ready(app: AppHandle, state: State<AppState>, serial: u64, width: f64, height: f64, slots: Vec<PreviewSlot>) {
+    let Some(hwnd) = window_hwnd(&app, "preview") else { return };
+    let scale = dock_scale(&app);
+    let px = |v: f64| (v * scale).round() as i32;
+    let (w, h) = ((width * scale).ceil() as i32, (height * scale).ceil() as i32);
+    {
+        // Vergrendeld tot het venster staat: een `hide_preview` die intussen
+        // binnenkomt, mag het niet vóór ons verbergen.
+        let mut p = state.preview.lock().unwrap();
+        if p.serial != serial {
+            return;
+        }
+        let slots: Vec<preview::Slot> = slots
+            .iter()
+            .map(|s| preview::Slot {
+                hwnd: s.hwnd,
+                rect: RECT { left: px(s.x), top: px(s.y), right: px(s.x + s.width), bottom: px(s.y + s.height) },
+            })
+            .collect();
+        let Some((x, y)) = beside_dock(&app, p.anchor, w, h) else { return };
+        p.place(&slots);
+        shell::place(hwnd, x, y, w, h);
+        shell::set_shown(hwnd, true);
+        p.visible = true;
+    }
+    sync_backdrop(&app, "preview");
+}
+
+/// Verbergt het voorbeeld en laat alle thumbnails los.
+fn hide_preview(app: &AppHandle) {
+    let state = app.state::<AppState>();
+    let was_visible = {
+        let mut p = state.preview.lock().unwrap();
+        p.serial += 1;
+        let was = p.visible;
+        p.visible = false;
+        if was {
+            if let Some(h) = window_hwnd(app, "preview") {
+                shell::set_shown(h, false);
+            }
+        }
+        p.clear();
+        was
+    };
+    if was_visible {
+        backdrop::hide("preview");
+        let _ = app.emit("preview:closed", ());
+    }
+}
+
+#[tauri::command(async)]
+fn close_preview(app: AppHandle) {
+    hide_preview(&app);
+}
+
+/// Vangnet naast de muisgebeurtenissen van de interface: staat de muis een
+/// tijdje buiten zowel de balk als het voorbeeld, dan gaat het dicht.
+fn preview_watch(app: &AppHandle, outside: &mut u32) {
+    if !app.state::<AppState>().preview.lock().unwrap().visible {
+        *outside = 0;
+        return;
+    }
+    let over = ["preview", "dock"].iter().any(|l| window_hwnd(app, l).is_some_and(shell::cursor_inside));
+    *outside = if over { 0 } else { *outside + 1 };
+    if *outside >= 3 {
+        *outside = 0;
+        hide_preview(app);
+    }
+}
+
 // ----------------------------------------------------- achtergrondwerk --
 
 /// Volgt vensters (4× per seconde) en bewaakt taakbalk en schermindeling.
@@ -432,6 +598,7 @@ fn shell_thread(app: AppHandle) {
     let mut geometry = None;
     let mut was_fullscreen = false;
     let mut tick: u32 = 0;
+    let mut outside: u32 = 0;
     loop {
         let cfg = state.config.lock().unwrap().clone();
         let snapshot = tracker.tick(&cfg);
@@ -441,6 +608,7 @@ fn shell_thread(app: AppHandle) {
             // Schermvullende game of video: de balk gaat uit de weg.
             if snapshot.fullscreen {
                 hide_popup(&app, false);
+                hide_preview(&app);
             }
             if let Some(dock) = window_hwnd(&app, "dock") {
                 shell::set_shown(dock, !snapshot.fullscreen);
@@ -461,6 +629,7 @@ fn shell_thread(app: AppHandle) {
         }
 
         taskbar::enforce(&cfg.taskbar);
+        preview_watch(&app, &mut outside);
 
         // Elke 2 s: is het scherm of het werkgebied veranderd (resolutie,
         // schaal, herstart van Explorer)? Dan de balk opnieuw plaatsen.
@@ -594,7 +763,7 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     backdrop::apply(&handle, "dock");
     // Pas ná het tonen: het vensterframework zet de vensterstijl opnieuw
     // wanneer het een venster toont.
-    for label in ["dock", "popup"] {
+    for label in ["dock", "popup", "preview"] {
         if let Some(h) = window_hwnd(&handle, label) {
             shell::make_tool_window(h);
         }
@@ -602,8 +771,11 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     // De balk pakt bij een klik de focus niet, net als de Windows-taakbalk.
     // Zo blijft een open Startmenu of paneel open tot de klik zelf is
     // verwerkt, en sluit een tweede klik op dezelfde knop het weer.
-    if let Some(h) = window_hwnd(&handle, "dock") {
-        shell::make_no_activate(h);
+    // Het voorbeeldvenster (bij hoveren) ook niet.
+    for label in ["dock", "preview"] {
+        if let Some(h) = window_hwnd(&handle, label) {
+            shell::make_no_activate(h);
+        }
     }
 
     // Systeemvakicoon als noodrem: instellingen openen of afsluiten.
@@ -693,6 +865,7 @@ fn main() {
         media: Mutex::default(),
         icons: Mutex::default(),
         popup: Mutex::default(),
+        preview: Mutex::default(),
         update: Mutex::default(),
     };
 
@@ -726,6 +899,9 @@ fn main() {
             open_popup,
             popup_ready,
             close_popup,
+            open_preview,
+            preview_ready,
+            close_preview,
             set_backdrop,
             check_update,
             install_update,

@@ -558,6 +558,7 @@ function renderSettings() {
       t('group.windows'),
       field(t('taskbar.label'), seg('taskbar', ['hidden', 'autohide', 'none'].map((v) => [v, t(`taskbar.${v}`)])), t('taskbar.hint'), true),
       field(t('reserve.label'), toggle(() => config.reserveSpace, (c, v) => (c.reserveSpace = v)), t('reserve.hint')),
+      field(t('previews.label'), toggle(() => config.previews !== false, (c, v) => (c.previews = v)), t('previews.hint')),
       field(t('autostart.label'), toggle(() => config.autostart, (c, v) => (c.autostart = v))),
     ),
     group(

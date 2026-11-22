@@ -55,6 +55,7 @@ systeemvak en live widgets, terwijl de gewone Windows-taakbalk uit beeld gaat.
 | --- | --- |
 | Klik op een app | Starten, naar voren halen, of (als hij al actief is) minimaliseren |
 | Klik op een app met meerdere vensters | Lijst met vensters |
+| Muis even op een app houden | Live voorbeelden van de vensters; klik er een om het naar voren te halen, × sluit het (uit te zetten in de instellingen) |
 | Middelste muisknop of Shift+klik op een app | Nieuw venster |
 | Rechtsklik op een app | Menu: vensters, vastmaken/losmaken, verplaatsen, sluiten |
 | Knop met het puntenraster | Startmenu van Windows |
@@ -282,8 +283,7 @@ Problemen (zoals een icoon dat niet lukt) komen in
   als administrator draait.
 - **Vastgemaakte Store-apps** uit de Windows-taakbalk worden niet automatisch
   overgenomen; maak ze vast via rechtsklik zodra ze openstaan.
-- Geen venstervoorbeelden bij aanwijzen, geen slepen om te ordenen (wel
-  "Naar links/rechts" in het menu).
+- Geen slepen om apps te ordenen (wel "Naar links/rechts" in het menu).
 
 ## De interface bekijken zonder Windows
 

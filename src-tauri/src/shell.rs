@@ -442,6 +442,20 @@ pub fn set_shown(h: HWND, shown: bool) {
     }
 }
 
+/// Staat de muisaanwijzer boven dit venster?
+pub fn cursor_inside(h: HWND) -> bool {
+    let mut p = POINT::default();
+    let mut r = RECT::default();
+    unsafe {
+        GetCursorPos(&mut p).is_ok()
+            && GetWindowRect(h, &mut r).is_ok()
+            && p.x >= r.left
+            && p.x < r.right
+            && p.y >= r.top
+            && p.y < r.bottom
+    }
+}
+
 pub fn place(h: HWND, x: i32, y: i32, w: i32, height: i32) {
     unsafe {
         let _ = SetWindowPos(h, Some(HWND_TOPMOST), x, y, w, height, SWP_NOACTIVATE);

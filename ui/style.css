@@ -664,6 +664,38 @@ html[data-pos="right"] #panel { --panel-from: translateX(8px); transform-origin:
 .cal-foot { display: flex; justify-content: flex-end; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
 .cal-foot .btn { display: flex; align-items: center; gap: 7px; }
 
+/* -------------------------------------------------- venstervoorbeelden -- */
+/* Een kaart per venster, zoals de voorbeelden van de Windows-taakbalk. Het
+   beeld (.pv-shot) tekent Windows er zelf overheen (DWM-thumbnail); hier
+   staat alleen een leeg vlak. Net als bij het paneel is het venster 12 px
+   groter dan het voorbeeld, voor de schaduw. */
+.preview-page { font-size: 12px; }
+#preview {
+  position: absolute; left: 12px; top: 12px; display: flex; gap: 6px; padding: 8px;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+  box-shadow:
+    0 0 0 .5px var(--ring, transparent),
+    0 1px 3px rgba(0, 0, 0, .16),
+    0 6px 10px -3px rgba(0, 0, 0, .32);
+}
+#preview.v { flex-direction: column; }
+html[data-acrylic] #preview { border-radius: var(--radius); }
+.pv-card { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 6px 8px 8px; border-radius: 6px; cursor: default; transition: background-color .1s; }
+#preview:not(.idle) .pv-card:hover { background: var(--hover); }
+#preview:not(.idle) .pv-card:active { background: var(--pressed); }
+.pv-card.active::after { content: ""; position: absolute; left: 50%; bottom: 2px; width: 16px; height: 3px; margin-left: -8px; border-radius: 2px; background: var(--accent); }
+.pv-head { display: flex; align-items: center; gap: 8px; min-width: 0; height: 22px; }
+.pv-head img { width: 16px; height: 16px; flex: none; }
+.pv-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
+.pv-close { display: grid; place-items: center; width: 22px; height: 22px; margin-right: -3px; border-radius: 4px; color: var(--ink-2); flex: none; opacity: 0; transition: opacity .1s, background-color .1s; }
+#preview:not(.idle) .pv-card:hover .pv-close { opacity: 1; }
+.pv-close:hover { background: color-mix(in srgb, var(--danger) 70%, transparent); color: #fff; }
+.pv-box { display: grid; place-items: center; }
+.pv-shot { border-radius: 2px; }
+.pv-icon { width: 40px; height: 40px; opacity: .9; }
+/* In de browser is er geen DWM: een nepvenster op de plek van het beeld. */
+html.mock .pv-shot { background: linear-gradient(160deg, #e9edf5, #c9d2e3); box-shadow: inset 0 14px 0 #d7dce6; }
+
 /* -------------------------------------------- voorbeeld in de browser -- */
 html.mock body.dock-page {
   background:

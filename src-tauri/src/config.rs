@@ -101,6 +101,8 @@ pub struct Config {
     pub transparency: u32,
     /// Eens per dag bij GitHub kijken of er een nieuwe versie is.
     pub update_check: bool,
+    /// Live voorbeelden van de vensters tonen als de muis boven een app-icoon blijft.
+    pub previews: bool,
     pub widgets: Widgets,
     pub custom_widgets: Vec<CustomWidget>,
     /// Volgorde van de widgets (sleutels als "clock" of "custom:<id>"); leeg =
@@ -130,6 +132,7 @@ impl Default for Config {
             show_seconds: false,
             transparency: 0,
             update_check: true,
+            previews: true,
             widgets: Widgets::default(),
             custom_widgets: Vec::new(),
             widget_order: Vec::new(),
