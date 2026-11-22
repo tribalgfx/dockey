@@ -2,8 +2,8 @@
 
 use std::mem::size_of;
 use windows::Win32::UI::Input::KeyboardAndMouse::{
-    SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYBD_EVENT_FLAGS, KEYEVENTF_KEYUP, VIRTUAL_KEY, VK_A,
-    VK_D, VK_LWIN, VK_MENU, VK_N, VK_S, VK_TAB,
+    SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, INPUT_MOUSE, KEYBDINPUT, KEYBD_EVENT_FLAGS, KEYEVENTF_KEYUP,
+    MOUSEINPUT, VIRTUAL_KEY, VK_A, VK_D, VK_LWIN, VK_N, VK_S, VK_TAB,
 };
 
 fn key(vk: VIRTUAL_KEY, up: bool) -> INPUT {
@@ -29,9 +29,11 @@ fn chord(keys: &[VIRTUAL_KEY]) {
     }
 }
 
-/// Een losse Alt-tik (zonder iets te openen).
-pub fn tap_alt() {
-    let inputs = [key(VK_MENU, false), key(VK_MENU, true)];
+/// Een lege muisinvoer: telt voor Windows als eigen invoer (zodat
+/// SetForegroundWindow mag), maar komt bij geen enkele app als toets aan.
+/// Een Alt-tik deed hetzelfde, maar liet o.a. de menubalk van Firefox verschijnen.
+pub fn nudge_input() {
+    let inputs = [INPUT { r#type: INPUT_MOUSE, Anonymous: INPUT_0 { mi: MOUSEINPUT::default() } }];
     unsafe {
         SendInput(&inputs, size_of::<INPUT>() as i32);
     }

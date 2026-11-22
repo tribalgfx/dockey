@@ -386,8 +386,8 @@ pub fn focus(raw: isize) {
         let _ = SetForegroundWindow(h);
         if GetForegroundWindow() != h {
             // Windows staat naar voren halen alleen toe na eigen invoer; een
-            // korte Alt-tik telt als invoer (de balk zelf pakt geen focus).
-            crate::keys::tap_alt();
+            // lege muisinvoer telt als invoer (de balk zelf pakt geen focus).
+            crate::keys::nudge_input();
             let _ = SetForegroundWindow(h);
         }
         if GetForegroundWindow() != h {
