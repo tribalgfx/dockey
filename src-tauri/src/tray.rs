@@ -11,6 +11,9 @@
 //!
 //! Na het aanmelden vragen we alle apps met "TaskbarCreated" hun pictogram
 //! opnieuw door te geven; bij het stoppen nogmaals, voor de zekerheid.
+//!
+//! Hetzelfde venster leidt ook voortgang en badges van app-knoppen naar
+//! Dockey (zie taskband.rs).
 
 use crate::util::{from_wide, log};
 use serde::Serialize;
@@ -403,6 +406,11 @@ fn run() {
         let _ = SetWindowPos(hwnd, Some(HWND_TOPMOST), 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
         SetTimer(Some(hwnd), 1, 250, None);
         broadcast_taskbar_created();
+        // Voortgang en badges van apps (ITaskbarList3) komen via ons venster
+        // binnen (zie taskband.rs); vraag de apps die al draaien ze opnieuw door
+        // te geven.
+        crate::taskband::attach(hwnd);
+        crate::taskband::announce(&crate::shell::app_windows());
 
         let mut msg = MSG::default();
         while GetMessageW(&mut msg, None, 0, 0).as_bool() {

@@ -11,8 +11,8 @@ use windows::core::{w, BOOL, GUID, HSTRING, PCWSTR, PWSTR};
 use windows::Win32::Foundation::{CloseHandle, HWND, LPARAM, POINT, PROPERTYKEY, RECT, WPARAM};
 use windows::Win32::Graphics::Dwm::{DwmGetWindowAttribute, DWMWA_CLOAKED, DWMWA_EXTENDED_FRAME_BOUNDS};
 use windows::Win32::Graphics::Gdi::{
-    GetMonitorInfoW, MonitorFromPoint, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST,
-    MONITOR_DEFAULTTOPRIMARY,
+    EnumDisplayMonitors, GetMonitorInfoW, MonitorFromWindow, HDC, HMONITOR, MONITORINFO, MONITORINFOEXW,
+    MONITOR_DEFAULTTONEAREST,
 };
 use windows::Win32::Storage::Packaging::Appx::GetApplicationUserModelId;
 use windows::Win32::System::Threading::{
@@ -35,6 +35,11 @@ pub struct WinEntry {
     pub title: String,
     pub active: bool,
     pub min: bool,
+    /// Scherm waarop het venster (grotendeels) staat, bijv. `\\.\DISPLAY2`.
+    pub monitor: String,
+    /// Knipperen, voortgang en badge (zie taskband.rs).
+    #[serde(flatten)]
+    pub badge: crate::taskband::Badge,
 }
 
 #[derive(Serialize, Clone, PartialEq, Debug)]
@@ -49,10 +54,11 @@ pub struct Group {
 #[derive(Serialize, Clone, PartialEq, Debug, Default)]
 pub struct Snapshot {
     pub groups: Vec<Group>,
-    pub fullscreen: bool,
-    /// Er staat een venster tegen de balk aan (gemaximaliseerd of zo groot
-    /// gesnapt) op het primaire scherm.
-    pub maximized: bool,
+    /// Scherm waarop een schermvullend venster (game, video) actief is.
+    pub fullscreen: Option<String>,
+    /// Schermen waarop een venster tegen de balk aan staat (gemaximaliseerd of
+    /// zo groot gesnapt).
+    pub maximized: Vec<String>,
 }
 
 #[derive(Clone)]
@@ -211,47 +217,72 @@ pub fn display_name(key: &str) -> String {
     }
 }
 
-fn monitor_info(h: HWND) -> Option<MONITORINFO> {
+fn info_of(mon: HMONITOR) -> Option<MONITORINFOEXW> {
     unsafe {
-        let mon = MonitorFromWindow(h, MONITOR_DEFAULTTONEAREST);
-        let mut mi = MONITORINFO { cbSize: size_of::<MONITORINFO>() as u32, ..Default::default() };
-        GetMonitorInfoW(mon, &mut mi).as_bool().then_some(mi)
+        let mut mi = MONITORINFOEXW::default();
+        mi.monitorInfo.cbSize = size_of::<MONITORINFOEXW>() as u32;
+        GetMonitorInfoW(mon, &mut mi as *mut MONITORINFOEXW as *mut MONITORINFO).as_bool().then_some(mi)
     }
 }
 
-/// (schermrechthoek, werkgebied) van het primaire scherm.
-pub fn primary_geometry() -> Option<(RECT, RECT)> {
-    unsafe {
-        let mon = MonitorFromPoint(POINT { x: 0, y: 0 }, MONITOR_DEFAULTTOPRIMARY);
-        let mut mi = MONITORINFO { cbSize: size_of::<MONITORINFO>() as u32, ..Default::default() };
-        GetMonitorInfoW(mon, &mut mi).as_bool().then_some((mi.rcMonitor, mi.rcWork))
-    }
+fn monitor_info(h: HWND) -> Option<MONITORINFOEXW> {
+    info_of(unsafe { MonitorFromWindow(h, MONITOR_DEFAULTTONEAREST) })
 }
 
-fn covers_primary_monitor(h: HWND) -> bool {
+fn device_name(mi: &MONITORINFOEXW) -> String {
+    from_wide(&mi.szDevice)
+}
+
+/// Een scherm: naam (zoals `\\.\DISPLAY1`), rechthoek en werkgebied.
+#[derive(Clone, PartialEq, Debug)]
+pub struct Screen {
+    pub name: String,
+    pub primary: bool,
+    pub rect: RECT,
+    pub work: RECT,
+}
+
+unsafe extern "system" fn monitor_proc(mon: HMONITOR, _: HDC, _: *mut RECT, lparam: LPARAM) -> BOOL {
+    let list = &mut *(lparam.0 as *mut Vec<Screen>);
+    if let Some(mi) = info_of(mon) {
+        list.push(Screen {
+            name: device_name(&mi),
+            primary: mi.monitorInfo.dwFlags & MONITORINFOF_PRIMARY != 0,
+            rect: mi.monitorInfo.rcMonitor,
+            work: mi.monitorInfo.rcWork,
+        });
+    }
+    BOOL(1)
+}
+
+/// Alle schermen, het primaire eerst.
+pub fn screens() -> Vec<Screen> {
+    let mut list: Vec<Screen> = Vec::new();
+    unsafe {
+        let _ = EnumDisplayMonitors(None, None, Some(monitor_proc), LPARAM(&mut list as *mut Vec<Screen> as isize));
+    }
+    list.sort_by_key(|s| !s.primary);
+    list
+}
+
+/// Vult dit venster zijn hele scherm (game, video)? Dan dat scherm.
+fn fullscreen_on(h: HWND) -> Option<String> {
     if SHELL_CLASSES.contains(&class_name(h).as_str()) {
-        return false;
+        return None;
     }
-    let Some(mi) = monitor_info(h) else { return false };
-    if mi.dwFlags & MONITORINFOF_PRIMARY == 0 {
-        return false;
-    }
+    let mi = monitor_info(h)?;
     let mut r = RECT::default();
     if unsafe { GetWindowRect(h, &mut r) }.is_err() {
-        return false;
+        return None;
     }
-    let m = mi.rcMonitor;
-    r.left <= m.left && r.top <= m.top && r.right >= m.right && r.bottom >= m.bottom
+    let m = mi.monitorInfo.rcMonitor;
+    (r.left <= m.left && r.top <= m.top && r.right >= m.right && r.bottom >= m.bottom).then(|| device_name(&mi))
 }
 
-/// Staat dit venster op het primaire scherm direct tegen de balk aan? Geldt
-/// voor gemaximaliseerde vensters, maar ook voor vensters die tegen de rand van
-/// de balk gesnapt zijn en die rand over de volle lengte raken.
-fn touches_bar(h: HWND, edge: Edge) -> bool {
-    let Some(mi) = monitor_info(h) else { return false };
-    if mi.dwFlags & MONITORINFOF_PRIMARY == 0 {
-        return false;
-    }
+/// Staat dit venster op zijn scherm direct tegen de balk aan? Geldt voor
+/// gemaximaliseerde vensters, maar ook voor vensters die tegen de rand van de
+/// balk gesnapt zijn en die rand over de volle lengte raken.
+fn touches_bar(h: HWND, mi: &MONITORINFOEXW, edge: Edge) -> bool {
     if unsafe { IsZoomed(h).as_bool() } {
         return true;
     }
@@ -264,7 +295,7 @@ fn touches_bar(h: HWND, edge: Edge) -> bool {
         return false;
     }
     const SLACK: i32 = 4;
-    let w = mi.rcWork;
+    let w = mi.monitorInfo.rcWork;
     let full_width = r.left <= w.left + SLACK && r.right >= w.right - SLACK;
     let full_height = r.top <= w.top + SLACK && r.bottom >= w.bottom - SLACK;
     match edge {
@@ -283,6 +314,7 @@ pub struct Tracker {
     seen: Vec<isize>,
     last_active: isize,
     fullscreen_ticks: u8,
+    fullscreen_on: Option<String>,
 }
 
 impl Tracker {
@@ -294,6 +326,7 @@ impl Tracker {
             seen: Vec::new(),
             last_active: 0,
             fullscreen_ticks: 0,
+            fullscreen_on: None,
         }
     }
 
@@ -325,15 +358,26 @@ impl Tracker {
         // dan blijft het vorige venster "actief": zo kan een klik op de actieve
         // app die minimaliseren.
         let fg = unsafe { GetForegroundWindow() };
-        let mut fullscreen_now = false;
+        let mut fullscreen_now = None;
         if !fg.0.is_null() && pid_of(fg) != self.own_pid {
+            if self.last_active != fg.0 as isize {
+                // Net actief geworden: dit venster hoeft geen aandacht meer te vragen.
+                crate::taskband::activated(fg.0 as isize);
+            }
             self.last_active = fg.0 as isize;
-            fullscreen_now = covers_primary_monitor(fg);
-        } else if !fg.0.is_null() {
+            fullscreen_now = fullscreen_on(fg);
+        } else if !fg.0.is_null() && self.fullscreen_ticks >= 2 {
             // Onze balk heeft focus; schermvullend blijft zoals het was.
-            fullscreen_now = self.fullscreen_ticks >= 2;
+            fullscreen_now = self.fullscreen_on.clone();
         }
-        self.fullscreen_ticks = if fullscreen_now { self.fullscreen_ticks.saturating_add(1).min(3) } else { 0 };
+        self.fullscreen_ticks = match &fullscreen_now {
+            Some(m) if self.fullscreen_on.as_ref() == Some(m) => self.fullscreen_ticks.saturating_add(1).min(3),
+            Some(_) => 1,
+            None => 0,
+        };
+        self.fullscreen_on = fullscreen_now;
+        crate::taskband::retain(&current);
+        let badges = crate::taskband::badges();
 
         let mut groups: Vec<Group> = cfg
             .pinned
@@ -356,7 +400,14 @@ impl Tracker {
                 },
             };
             let min = unsafe { IsIconic(h).as_bool() };
-            let entry = WinEntry { hwnd: raw, title: window_title(h), active: raw == self.last_active && !min, min };
+            let entry = WinEntry {
+                hwnd: raw,
+                title: window_title(h),
+                active: raw == self.last_active && !min,
+                min,
+                monitor: monitor_info(h).map(|mi| device_name(&mi)).unwrap_or_default(),
+                badge: badges.get(&raw).cloned().unwrap_or_default(),
+            };
             match groups.iter_mut().find(|g| g.key == meta.key) {
                 Some(g) => g.windows.push(entry),
                 None => {
@@ -366,13 +417,29 @@ impl Tracker {
             }
         }
 
-        let maximized = current.iter().any(|&raw| {
+        let mut maximized: Vec<String> = Vec::new();
+        for &raw in &current {
             let h = hwnd(raw);
-            !unsafe { IsIconic(h).as_bool() } && touches_bar(h, cfg.edge())
-        });
+            if unsafe { IsIconic(h).as_bool() } {
+                continue;
+            }
+            let Some(mi) = monitor_info(h) else { continue };
+            let name = device_name(&mi);
+            if !maximized.contains(&name) && touches_bar(h, &mi, cfg.edge()) {
+                maximized.push(name);
+            }
+        }
+        maximized.sort();
 
-        Snapshot { groups, fullscreen: self.fullscreen_ticks >= 2, maximized }
+        let fullscreen = if self.fullscreen_ticks >= 2 { self.fullscreen_on.clone() } else { None };
+        Snapshot { groups, fullscreen, maximized }
     }
+}
+
+/// De app-vensters die nu open zijn (zoals in de balk).
+pub fn app_windows() -> Vec<isize> {
+    let own = std::process::id();
+    top_level_windows().into_iter().filter(|h| is_app_window(*h, own)).map(|h| h.0 as isize).collect()
 }
 
 // ---------------------------------------------------------------- acties --

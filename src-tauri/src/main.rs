@@ -12,6 +12,7 @@ mod pins;
 mod preview;
 mod shell;
 mod stats;
+mod taskband;
 mod taskbar;
 mod tray;
 mod update;
@@ -24,7 +25,7 @@ use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
-use tauri::{AppHandle, Emitter, Manager, RunEvent, State, WindowEvent};
+use tauri::{AppHandle, Emitter, Manager, RunEvent, State, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 use tauri_plugin_autostart::ManagerExt;
 use windows::Win32::Foundation::{HWND, RECT};
 use windows::Win32::System::Com::{CoInitializeEx, COINIT_MULTITHREADED};
@@ -33,6 +34,8 @@ use windows::Win32::System::Com::{CoInitializeEx, COINIT_MULTITHREADED};
 struct Popup {
     /// Welk paneel openstaat of het laatst openstond (bijv. "menu:chrome").
     id: String,
+    /// De balk die het paneel opende (bijv. "dock" of "dock-DISPLAY2").
+    dock: String,
     /// Midden van het aangeklikte element, in schermpixels.
     anchor_x: i32,
     anchor_y: i32,
@@ -51,50 +54,158 @@ struct AppState {
     icons: Mutex<HashMap<String, String>>,
     popup: Mutex<Popup>,
     preview: Mutex<preview::Preview>,
+    /// De balk waarboven het voorbeeld staat.
+    preview_dock: Mutex<String>,
     /// Een nieuwere release die nog niet geïnstalleerd is.
     update: Mutex<Option<update::Release>>,
+    /// De balken: één per scherm (of alleen op het primaire scherm).
+    docks: Mutex<Vec<Dock>>,
 }
+
+/// Een balkvenster en het scherm waar het bij hoort.
+#[derive(Clone, PartialEq, Debug)]
+struct Dock {
+    /// "dock" op het primaire scherm, "dock-DISPLAY2" enz. op de andere.
+    label: String,
+    /// Naam van het scherm, zoals `\\.\DISPLAY2`.
+    monitor: String,
+}
+
+/// De balk op het primaire scherm (met widgets, systeemvak en instellingen).
+const MAIN_DOCK: &str = "dock";
 
 fn window_hwnd(app: &AppHandle, label: &str) -> Option<HWND> {
     app.get_webview_window(label).and_then(|w| w.hwnd().ok())
 }
 
+fn docks(app: &AppHandle) -> Vec<Dock> {
+    app.state::<AppState>().docks.lock().unwrap().clone()
+}
+
 /// Zet de vervaging achter een venster weer op zijn plek (na verplaatsen,
 /// tonen of verbergen van dat venster).
-fn sync_backdrop(app: &AppHandle, label: &'static str) {
+fn sync_backdrop(app: &AppHandle, label: &str) {
     let handle = app.clone();
-    let _ = app.run_on_main_thread(move || backdrop::apply(&handle, label));
+    let label = label.to_string();
+    let _ = app.run_on_main_thread(move || backdrop::apply(&handle, &label));
 }
 
 // ------------------------------------------------------------- indeling --
 
-/// Zet de balk op zijn plek aan de schermrand en reserveert daar ruimte.
+/// Het Tauri-scherm bij een scherm uit `shell::screens` (zelfde linkerbovenhoek).
+fn tauri_monitor(app: &AppHandle, screen: &shell::Screen) -> Option<tauri::Monitor> {
+    app.available_monitors()
+        .ok()?
+        .into_iter()
+        .find(|m| m.position().x == screen.rect.left && m.position().y == screen.rect.top)
+}
+
+/// Het scherm waar een balk bij hoort.
+fn dock_monitor(app: &AppHandle, label: &str) -> Option<tauri::Monitor> {
+    let name = docks(app).into_iter().find(|d| d.label == label)?.monitor;
+    let screen = shell::screens().into_iter().find(|s| s.name == name)?;
+    tauri_monitor(app, &screen)
+}
+
+/// Zet de balken op hun plek aan de schermrand en reserveert daar ruimte.
 /// Moet op de hoofdthread draaien.
 fn layout(app: &AppHandle) {
     let cfg = app.state::<AppState>().config.lock().unwrap().clone();
-    let Some(win) = app.get_webview_window("dock") else { return };
-    let Ok(hwnd) = win.hwnd() else { return };
-    let Ok(Some(monitor)) = win.primary_monitor() else { return };
+    for dock in docks(app) {
+        let Some(win) = app.get_webview_window(&dock.label) else { continue };
+        let Ok(hwnd) = win.hwnd() else { continue };
+        let Some(monitor) = dock_monitor(app, &dock.label) else { continue };
 
-    let scale = monitor.scale_factor();
-    let (pos, size) = (monitor.position(), monitor.size());
-    let thick = (cfg.strip_thickness() * scale).round() as i32;
-    let (l, t) = (pos.x, pos.y);
-    let (r, b) = (l + size.width as i32, t + size.height as i32);
-    let mut rect = match cfg.edge() {
-        Edge::Top => RECT { left: l, top: t, right: r, bottom: t + thick },
-        Edge::Bottom => RECT { left: l, top: b - thick, right: r, bottom: b },
-        Edge::Left => RECT { left: l, top: t, right: l + thick, bottom: b },
-        Edge::Right => RECT { left: r - thick, top: t, right: r, bottom: b },
-    };
+        let scale = monitor.scale_factor();
+        let (pos, size) = (monitor.position(), monitor.size());
+        let thick = (cfg.strip_thickness() * scale).round() as i32;
+        let (l, t) = (pos.x, pos.y);
+        let (r, b) = (l + size.width as i32, t + size.height as i32);
+        let mut rect = match cfg.edge() {
+            Edge::Top => RECT { left: l, top: t, right: r, bottom: t + thick },
+            Edge::Bottom => RECT { left: l, top: b - thick, right: r, bottom: b },
+            Edge::Left => RECT { left: l, top: t, right: l + thick, bottom: b },
+            Edge::Right => RECT { left: r - thick, top: t, right: r, bottom: b },
+        };
 
-    if cfg.reserve_space {
-        rect = appbar::reserve(hwnd, cfg.edge(), rect);
-    } else {
-        appbar::remove(hwnd);
+        if cfg.reserve_space {
+            rect = appbar::reserve(hwnd, cfg.edge(), rect);
+        } else {
+            appbar::remove(hwnd);
+        }
+        shell::place(hwnd, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top);
+        backdrop::apply(app, &dock.label);
     }
-    shell::place(hwnd, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top);
-    backdrop::apply(app, "dock");
+}
+
+/// Label van de balk voor een scherm.
+fn dock_label(screen: &shell::Screen) -> String {
+    if screen.primary {
+        return MAIN_DOCK.to_string();
+    }
+    let tail: String = screen.name.chars().filter(|c| c.is_ascii_alphanumeric()).collect();
+    format!("dock-{tail}")
+}
+
+/// Maakt (of sluit) balken zodat er precies één per gewenst scherm is. Niet
+/// op de hoofdthread aanroepen: een venster maken wacht op de hoofdthread.
+/// Geeft `true` als er iets veranderde.
+fn sync_docks(app: &AppHandle) -> bool {
+    let all = app.state::<AppState>().config.lock().unwrap().all_monitors;
+    let wanted: Vec<Dock> = shell::screens()
+        .iter()
+        .filter(|s| s.primary || all)
+        .map(|s| Dock { label: dock_label(s), monitor: s.name.clone() })
+        .collect();
+    if wanted.is_empty() {
+        return false; // geen schermen gevonden (bijv. tijdens wisselen): niets veranderen
+    }
+    let current = docks(app);
+    if current == wanted {
+        return false;
+    }
+
+    for old in current.iter().filter(|d| !wanted.iter().any(|w| w.label == d.label)) {
+        if let Some(win) = app.get_webview_window(&old.label) {
+            if let Ok(h) = win.hwnd() {
+                appbar::remove(h);
+            }
+            backdrop::hide(&old.label);
+            let _ = win.destroy();
+        }
+    }
+    // Eerst bewaren: een nieuwe balk vraagt bij het laden al op welk scherm hij staat.
+    *app.state::<AppState>().docks.lock().unwrap() = wanted.clone();
+    for new in &wanted {
+        if app.get_webview_window(&new.label).is_some() {
+            continue;
+        }
+        let built = WebviewWindowBuilder::new(app, &new.label, WebviewUrl::App("index.html".into()))
+            .title("Dockey")
+            .decorations(false)
+            .transparent(true)
+            .shadow(false)
+            .always_on_top(true)
+            .skip_taskbar(true)
+            .resizable(false)
+            .maximizable(false)
+            .minimizable(false)
+            .visible(false)
+            .focused(false)
+            .disable_drag_drop_handler()
+            .build();
+        match built {
+            Ok(win) => {
+                let _ = win.show();
+                if let Ok(h) = win.hwnd() {
+                    shell::make_tool_window(h);
+                    shell::make_no_activate(h);
+                }
+            }
+            Err(e) => util::log(&format!("balk voor {} maken mislukt: {e}", new.monitor)),
+        }
+    }
+    true
 }
 
 fn request_layout(app: &AppHandle) {
@@ -123,8 +234,13 @@ fn commit_config(app: &AppHandle, cfg: Config) {
 // ----------------------------------------------------------- commando's --
 
 #[tauri::command]
-fn get_initial(state: State<AppState>) -> Value {
+fn get_initial(window: tauri::WebviewWindow, state: State<AppState>) -> Value {
+    let label = window.label();
+    let monitor = state.docks.lock().unwrap().iter().find(|d| d.label == label).map(|d| d.monitor.clone());
     json!({
+        // Voor een balk: op welk scherm hij staat en of het de hoofdbalk is.
+        "monitor": monitor,
+        "mainDock": label == MAIN_DOCK,
         "config": *state.config.lock().unwrap(),
         "shell": *state.shell.lock().unwrap(),
         "stats": *state.stats.lock().unwrap(),
@@ -170,12 +286,7 @@ fn install_update(state: State<AppState>) -> Result<(), String> {
 /// De interface meldt waar zijn glasvlak staat; daar komt de vervaging.
 #[tauri::command]
 fn set_backdrop(app: AppHandle, window: tauri::WebviewWindow, rect: Option<backdrop::Rect>, round: bool) {
-    let label: &'static str = match window.label() {
-        "dock" => "dock",
-        "popup" => "popup",
-        "preview" => "preview",
-        _ => return,
-    };
+    let label = window.label();
     backdrop::store(label, rect, round);
     sync_backdrop(&app, label);
 }
@@ -230,6 +341,19 @@ fn move_pin(app: AppHandle, state: State<AppState>, key: String, delta: i32) {
     let j = i as i32 + delta;
     if j >= 0 && (j as usize) < cfg.pinned.len() {
         cfg.pinned.swap(i, j as usize);
+        commit_config(&app, cfg);
+    }
+}
+
+/// Nieuwe volgorde van de vastgemaakte apps (na slepen in de balk). Apps die
+/// niet in `keys` staan, houden hun plek achteraan.
+#[tauri::command(async)]
+fn reorder_pins(app: AppHandle, state: State<AppState>, keys: Vec<String>) {
+    let mut cfg = state.config.lock().unwrap().clone();
+    let rank = |k: &str| keys.iter().position(|x| x == k).unwrap_or(usize::MAX);
+    let before: Vec<String> = cfg.pinned.iter().map(|p| p.key.clone()).collect();
+    cfg.pinned.sort_by_key(|p| rank(&p.key)); // stabiel: de rest blijft in volgorde
+    if cfg.pinned.iter().map(|p| &p.key).ne(before.iter()) {
         commit_config(&app, cfg);
     }
 }
@@ -313,8 +437,10 @@ fn quit(app: AppHandle) {
 /// binnen de balk. Geeft `false` terug als het paneel juist dichtging door
 /// dezelfde klik.
 #[tauri::command(async)]
+#[allow(clippy::too_many_arguments)]
 fn open_popup(
     app: AppHandle,
+    window: tauri::WebviewWindow,
     state: State<AppState>,
     id: String,
     kind: String,
@@ -322,19 +448,28 @@ fn open_popup(
     anchor_x: f64,
     anchor_y: f64,
 ) -> bool {
-    let Some(dock) = app.get_webview_window("dock") else { return false };
+    // Het paneel hoort bij de balk die erom vroeg (het paneel zelf kan ook
+    // een paneel openen, bijv. een submenu: dan dezelfde balk als nu).
+    let label = if window.label().starts_with(MAIN_DOCK) {
+        window.label().to_string()
+    } else {
+        let current = state.popup.lock().unwrap().dock.clone();
+        if current.is_empty() { MAIN_DOCK.to_string() } else { current }
+    };
+    let Some(dock) = app.get_webview_window(&label) else { return false };
     hide_preview(&app);
     let scale = dock.scale_factor().unwrap_or(1.0);
     let origin = dock.outer_position().map(|p| (p.x, p.y)).unwrap_or((0, 0));
     {
         let mut popup = state.popup.lock().unwrap();
         let just_blurred = popup.blurred_at.map(|t| t.elapsed() < Duration::from_millis(350)).unwrap_or(false);
-        if popup.id == id && (popup.visible || just_blurred) {
+        if popup.id == id && popup.dock == label && (popup.visible || just_blurred) {
             drop(popup);
             hide_popup(&app, false);
             return false;
         }
         popup.id = id.clone();
+        popup.dock = label.clone();
         popup.anchor_x = origin.0 + (anchor_x * scale).round() as i32;
         popup.anchor_y = origin.1 + (anchor_y * scale).round() as i32;
     }
@@ -342,7 +477,7 @@ fn open_popup(
     // nooit hoger dan dat. Boven/onder: de ruimte tussen balk en andere rand;
     // links/rechts: de hele schermhoogte.
     let edge = state.config.lock().unwrap().edge();
-    let max_height = match (dock.primary_monitor(), dock.outer_position(), dock.outer_size()) {
+    let max_height = match (dock_monitor(&app, &label).ok_or(()).map(Some), dock.outer_position(), dock.outer_size()) {
         (Ok(Some(m)), Ok(pos), Ok(size)) => {
             let free = match edge {
                 Edge::Top => m.position().y + m.size().height as i32 - (pos.y + size.height as i32),
@@ -357,11 +492,11 @@ fn open_popup(
     true
 }
 
-/// Linksboven voor een venster van `w`×`h` fysieke pixels naast de balk,
-/// gecentreerd op `anchor` (schermpixels) en binnen het scherm.
-fn beside_dock(app: &AppHandle, anchor: (i32, i32), w: i32, h: i32) -> Option<(i32, i32)> {
-    let dock = app.get_webview_window("dock")?;
-    let monitor = dock.primary_monitor().ok()??;
+/// Linksboven voor een venster van `w`×`h` fysieke pixels naast de balk
+/// `label`, gecentreerd op `anchor` (schermpixels) en binnen het scherm.
+fn beside_dock(app: &AppHandle, label: &str, anchor: (i32, i32), w: i32, h: i32) -> Option<(i32, i32)> {
+    let dock = app.get_webview_window(label)?;
+    let monitor = dock_monitor(app, label)?;
     let (dock_pos, dock_size) = (dock.outer_position().ok()?, dock.outer_size().ok()?);
     let (mon_l, mon_t) = (monitor.position().x, monitor.position().y);
     let (mon_r, mon_b) = (mon_l + monitor.size().width as i32, mon_t + monitor.size().height as i32);
@@ -376,12 +511,9 @@ fn beside_dock(app: &AppHandle, anchor: (i32, i32), w: i32, h: i32) -> Option<(i
     })
 }
 
-/// Schaal van het scherm met de balk.
-fn dock_scale(app: &AppHandle) -> f64 {
-    app.get_webview_window("dock")
-        .and_then(|d| d.primary_monitor().ok().flatten())
-        .map(|m| m.scale_factor())
-        .unwrap_or(1.0)
+/// Schaal van het scherm met de balk `label`.
+fn dock_scale(app: &AppHandle, label: &str) -> f64 {
+    dock_monitor(app, label).map(|m| m.scale_factor()).unwrap_or(1.0)
 }
 
 /// `width`/`height` = gemeten grootte van de paneelinhoud in CSS-pixels.
@@ -389,16 +521,16 @@ fn dock_scale(app: &AppHandle) -> f64 {
 fn popup_ready(app: AppHandle, state: State<AppState>, width: f64, height: f64) {
     let Some(popup) = app.get_webview_window("popup") else { return };
     let Ok(hwnd) = popup.hwnd() else { return };
-    let scale = dock_scale(&app);
-    let (w, h) = ((width * scale).ceil() as i32, (height * scale).ceil() as i32);
-    let anchor = {
+    let (anchor, label) = {
         let mut p = state.popup.lock().unwrap();
         p.visible = true;
         p.blurred_at = None;
-        (p.anchor_x, p.anchor_y)
+        ((p.anchor_x, p.anchor_y), p.dock.clone())
     };
+    let scale = dock_scale(&app, &label);
+    let (w, h) = ((width * scale).ceil() as i32, (height * scale).ceil() as i32);
     // Naast de balk, gecentreerd op het aangeklikte element, binnen het scherm.
-    let Some((x, y)) = beside_dock(&app, anchor, w, h) else { return };
+    let Some((x, y)) = beside_dock(&app, &label, anchor, w, h) else { return };
 
     shell::place(hwnd, x, y, w, h);
     let _ = popup.show();
@@ -463,6 +595,7 @@ struct PreviewSlot {
 #[allow(clippy::too_many_arguments)]
 fn open_preview(
     app: AppHandle,
+    window: tauri::WebviewWindow,
     state: State<AppState>,
     key: String,
     name: String,
@@ -474,15 +607,13 @@ fn open_preview(
     if !state.config.lock().unwrap().previews || state.popup.lock().unwrap().visible || windows.is_empty() {
         return false;
     }
-    let (Some(dock), Some(dest)) = (app.get_webview_window("dock"), window_hwnd(&app, "preview")) else { return false };
+    let Some(dest) = window_hwnd(&app, "preview") else { return false };
+    let dock = window;
+    *state.preview_dock.lock().unwrap() = dock.label().to_string();
     let scale = dock.scale_factor().unwrap_or(1.0);
     let origin = dock.outer_position().map(|p| (p.x, p.y)).unwrap_or((0, 0));
-    let max_width = dock
-        .primary_monitor()
-        .ok()
-        .flatten()
-        .map(|m| m.size().width as f64 / m.scale_factor())
-        .unwrap_or(1200.0);
+    let max_width =
+        dock_monitor(&app, dock.label()).map(|m| m.size().width as f64 / m.scale_factor()).unwrap_or(1200.0);
 
     let serial = {
         let mut p = state.preview.lock().unwrap();
@@ -509,7 +640,8 @@ fn open_preview(
 #[tauri::command(async)]
 fn preview_ready(app: AppHandle, state: State<AppState>, serial: u64, width: f64, height: f64, slots: Vec<PreviewSlot>) {
     let Some(hwnd) = window_hwnd(&app, "preview") else { return };
-    let scale = dock_scale(&app);
+    let label = state.preview_dock.lock().unwrap().clone();
+    let scale = dock_scale(&app, &label);
     let px = |v: f64| (v * scale).round() as i32;
     let (w, h) = ((width * scale).ceil() as i32, (height * scale).ceil() as i32);
     {
@@ -526,7 +658,7 @@ fn preview_ready(app: AppHandle, state: State<AppState>, serial: u64, width: f64
                 rect: RECT { left: px(s.x), top: px(s.y), right: px(s.x + s.width), bottom: px(s.y + s.height) },
             })
             .collect();
-        let Some((x, y)) = beside_dock(&app, p.anchor, w, h) else { return };
+        let Some((x, y)) = beside_dock(&app, &label, p.anchor, w, h) else { return };
         p.place(&slots);
         shell::place(hwnd, x, y, w, h);
         shell::set_shown(hwnd, true);
@@ -569,7 +701,9 @@ fn preview_watch(app: &AppHandle, outside: &mut u32) {
         *outside = 0;
         return;
     }
-    let over = ["preview", "dock"].iter().any(|l| window_hwnd(app, l).is_some_and(shell::cursor_inside));
+    let over = std::iter::once("preview".to_string())
+        .chain(docks(app).into_iter().map(|d| d.label))
+        .any(|l| window_hwnd(app, &l).is_some_and(shell::cursor_inside));
     *outside = if over { 0 } else { *outside + 1 };
     if *outside >= 3 {
         *outside = 0;
@@ -595,25 +729,38 @@ fn shell_thread(app: AppHandle) {
     }
 
     let mut tracker = shell::Tracker::new();
-    let mut geometry = None;
-    let mut was_fullscreen = false;
+    let mut geometry = Vec::new();
+    let mut was_fullscreen: Option<String> = None;
+    let mut all_monitors = state.config.lock().unwrap().all_monitors;
     let mut tick: u32 = 0;
     let mut outside: u32 = 0;
     loop {
         let cfg = state.config.lock().unwrap().clone();
         let snapshot = tracker.tick(&cfg);
 
+        // Een balk erbij of eraf (instelling "alle schermen" gewijzigd).
+        if cfg.all_monitors != all_monitors {
+            all_monitors = cfg.all_monitors;
+            if sync_docks(&app) {
+                request_layout(&app);
+                was_fullscreen = None;
+            }
+        }
+
         if snapshot.fullscreen != was_fullscreen {
-            was_fullscreen = snapshot.fullscreen;
-            // Schermvullende game of video: de balk gaat uit de weg.
-            if snapshot.fullscreen {
+            // Schermvullende game of video: de balk op dat scherm gaat uit de weg.
+            if snapshot.fullscreen.is_some() {
                 hide_popup(&app, false);
                 hide_preview(&app);
             }
-            if let Some(dock) = window_hwnd(&app, "dock") {
-                shell::set_shown(dock, !snapshot.fullscreen);
+            for dock in docks(&app) {
+                let hide = snapshot.fullscreen.as_ref() == Some(&dock.monitor);
+                if let Some(h) = window_hwnd(&app, &dock.label) {
+                    shell::set_shown(h, !hide);
+                }
+                sync_backdrop(&app, &dock.label);
             }
-            sync_backdrop(&app, "dock");
+            was_fullscreen = snapshot.fullscreen.clone();
         }
 
         let changed = {
@@ -634,11 +781,13 @@ fn shell_thread(app: AppHandle) {
         // Elke 2 s: is het scherm of het werkgebied veranderd (resolutie,
         // schaal, herstart van Explorer)? Dan de balk opnieuw plaatsen.
         // Ook als Windows onze gereserveerde ruimte kwijt is.
+        // Ook schermen die erbij komen of weggaan: dan balken maken of sluiten.
         if tick % 8 == 0 {
-            let now = shell::primary_geometry();
-            let lost = window_hwnd(&app, "dock").is_some_and(appbar::lost);
+            let now = shell::screens();
+            let lost = docks(&app).iter().any(|d| window_hwnd(&app, &d.label).is_some_and(appbar::lost));
             if now != geometry || lost {
                 geometry = now;
+                sync_docks(&app);
                 request_layout(&app);
             }
         }
@@ -742,7 +891,14 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let handle = app.handle().clone();
     let cfg = handle.state::<AppState>().config.lock().unwrap().clone();
 
+    // De hoofdbalk (uit tauri.conf.json) staat op het primaire scherm; balken
+    // voor andere schermen maakt de shell-thread erbij (zie sync_docks).
+    let primary = shell::screens().into_iter().find(|s| s.primary).map(|s| s.name).unwrap_or_default();
+    *handle.state::<AppState>().docks.lock().unwrap() = vec![Dock { label: MAIN_DOCK.into(), monitor: primary }];
+
     taskbar::apply(&cfg.taskbar);
+    // Vóór het systeemvak: dat wijst apps naar dit venster voor voortgang en badges.
+    taskband::start();
     tray::init(handle.clone());
     tray::set_enabled(cfg.widgets.tray);
     // Autostart gelijktrekken met de instelling (o.a. na het overnemen van
@@ -866,7 +1022,9 @@ fn main() {
         icons: Mutex::default(),
         popup: Mutex::default(),
         preview: Mutex::default(),
+        preview_dock: Mutex::default(),
         update: Mutex::default(),
+        docks: Mutex::default(),
     };
 
     let app = tauri::Builder::default()
@@ -885,6 +1043,7 @@ fn main() {
             pin,
             unpin,
             move_pin,
+            reorder_pins,
             get_icon,
             fetch_url,
             fetch_image,
@@ -919,8 +1078,10 @@ fn main() {
     app.run(|app, event| {
         if let RunEvent::Exit = event {
             tray::stop();
-            if let Some(h) = window_hwnd(app, "dock") {
-                appbar::remove(h);
+            for dock in docks(app) {
+                if let Some(h) = window_hwnd(app, &dock.label) {
+                    appbar::remove(h);
+                }
             }
             taskbar::restore();
         }

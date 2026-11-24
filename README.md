@@ -21,7 +21,14 @@ sight.
 - **Apps**: pinned apps and all open windows, grouped per app, with the real
   app icons (if the shell can't provide an icon, Dockey tries the system image
   list, the exe file and finally the icon of an open window). On first start,
-  the apps already pinned to the Windows taskbar are taken over.
+  the apps already pinned to the Windows taskbar are taken over. What apps
+  show on their taskbar button shows in Dockey too: a button that wants
+  attention pulses orange, a progress bar (copying, downloads) appears under
+  the icon, and a badge (such as unread messages) sits on the icon. Drag apps
+  to change their order.
+- **Multiple displays**: optionally a bar on every display (Settings →
+  Position and shape → Bar on all displays), with Start, the apps and the clock. Each
+  bar then shows the windows on its own display; pinned apps are on every bar.
 - **Widgets**: now playing with album art and controls, weather (click for the
   coming hours and days), CPU graph and memory, network speed, volume,
   battery, calendar and a clock with a month view (including week numbers),
@@ -69,6 +76,7 @@ sight.
 | Click ^ (system tray) | The other icons; "Choose what's in the bar" pins them |
 | Click a custom widget | The address that belongs to it (for a status widget: the link from the response) |
 | Grab a widget and drag it | Change the order of the widgets (Settings → Default order resets it) |
+| Grab an app and drag it | Change the order of the apps: pinned apps among each other (kept), open apps among each other (until Dockey restarts) |
 | Dot on the dot grid | A new version is available: right-click the bar → Update to version … |
 
 Menus close with the same button that opened them (Start, Quick Settings, the
@@ -270,7 +278,13 @@ can't be loaded) go into `%APPDATA%\Dockey\dockey.log`.
   "register again" when Dockey starts only appears after that app restarts.
   Windows' own volume, network and battery aren't tray icons; Dockey has its
   own widgets for those. You can turn the tray off under widgets (Tray).
-- **Only the primary screen** gets a bar.
+- **Progress bars and badges on app buttons** come in through Dockey's
+  system tray: with the tray turned off (under widgets), Dockey doesn't see
+  them. Pulsing when an app wants attention always works. An app that set its
+  badge before Dockey started is asked to send it again; an app that doesn't,
+  shows it the next time the badge changes.
+- **Other displays** get a bar with Start, the apps and the clock; the other
+  widgets and the system tray are on the bar of the primary display.
 - **Vertical dock on a short screen**: if not everything fits, the app list
   scrolls; in that case, turn off some widgets.
 - **Glass only blurs on Windows 11.** There Windows blurs the desktop behind
@@ -282,7 +296,6 @@ can't be loaded) go into `%APPDATA%\Dockey\dockey.log`.
   administrator.
 - **Pinned Store apps** from the Windows taskbar aren't taken over
   automatically; pin them with a right click once they're open.
-- No dragging to reorder apps (there is "Move left/right" in the menu).
 
 ## Viewing the interface without Windows
 
@@ -295,7 +308,8 @@ python3 -m http.server 8765 --directory ui
 
 Then open `http://127.0.0.1:8765/index.html`. URL parameters pick a variant,
 for example `?theme=glas&size=l&layout=bar&pos=left&popup=settings`;
-`?max=1` simulates a maximised window.
+`?max=1` simulates a maximised window, `?badges` shows attention, progress and
+badges on app buttons, and `?extra` shows the bar of another display.
 
 ## Structure
 
@@ -317,6 +331,8 @@ src-tauri/           Windows side (Rust, Tauri 2)
   src/keys.rs            Windows shortcuts (Start, Task view, …)
   src/config.rs          settings
   src/update.rs          finding, downloading, checking and installing a new version
+  src/taskband.rs        attention, progress and badges on app buttons
+  src/tray.rs            the system tray in the bar
 ```
 
 The code comments are in Dutch.

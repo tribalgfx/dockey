@@ -236,6 +236,29 @@ html[data-pos="top"] .tile::after { bottom: auto; top: 1px; }
 .tile.multi::after { width: 10px; }
 .tile.active::after { width: 18px; background: var(--accent); opacity: 1; }
 .tile.active { background: var(--hover); }
+/* Een app vraagt aandacht: een paar keer oranje pulseren, daarna oranje
+   blijven tot je het venster opent (zoals de Windows-taakbalk). */
+.tile.attention { background: rgba(245, 158, 11, .3); animation: attention .9s ease-in-out 6 alternate; }
+.tile.attention::after { width: 18px; background: #f59e0b; opacity: 1; }
+@keyframes attention { from { background-color: rgba(245, 158, 11, .5); } to { background-color: rgba(245, 158, 11, .12); } }
+/* Voortgang (kopiëren, downloaden): een balkje onder het icoon. */
+.tile .progress {
+  position: absolute; left: 20%; right: 20%; bottom: 6px; height: 3px; border-radius: 2px; overflow: hidden;
+  background: color-mix(in srgb, var(--ink) 20%, transparent); pointer-events: none;
+}
+html[data-pos="top"] .tile .progress { bottom: auto; top: 6px; }
+.tile .progress i { display: block; height: 100%; width: 0; border-radius: inherit; background: #3fb950; transition: width .3s ease-out; }
+.tile .progress[data-state="paused"] i { background: #e3b341; }
+.tile .progress[data-state="error"] i { background: #f85149; }
+.tile .progress[data-state="busy"] i { width: 35%; animation: busy 1.3s linear infinite; }
+@keyframes busy { from { translate: -100% 0; } to { translate: 290% 0; } }
+/* Badge van de app (bijv. aantal ongelezen berichten), rechtsonder op het icoon. */
+.tile img.overlay {
+  position: absolute; right: 4px; bottom: 4px; width: calc(var(--icon) * .5); height: calc(var(--icon) * .5);
+  transform: none !important; pointer-events: none; filter: drop-shadow(0 0 1px rgba(0, 0, 0, .5));
+}
+.tile.dragging { background: var(--pressed); box-shadow: 0 0 0 1px var(--line), 0 3px 8px rgba(0, 0, 0, .25); z-index: 1; }
+html.sorting .tile { transition: none; }
 #start { color: var(--ink); }
 /* Er staat een nieuwe versie klaar. */
 #start.has-update::before {
@@ -397,6 +420,8 @@ html[data-pos="right"] #panel { --panel-from: translateX(8px); transform-origin:
 @media (prefers-reduced-motion: reduce) {
   #panel.enter { animation: none; }
   .tile img, .tile .letter, .tile::after { transition-duration: 0s; }
+  .tile.attention { animation: none; }
+  .tile .progress[data-state="busy"] i { animation: none; width: 100%; opacity: .6; }
 }
 
 /* Contextmenu, zoals in Windows 11: compact, kleine hoekstraal, regels van

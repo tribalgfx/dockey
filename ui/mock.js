@@ -54,6 +54,8 @@ function create() {
     transparency: Number(params.get('transparantie') ?? 0),
     updateCheck: true,
     previews: !params.has('geenvoorbeelden'),
+    allMonitors: params.has('extra'),
+    appsPerMonitor: true,
     customWidgets: params.has('custom')
       ? [
           { id: 'st', kind: 'status', name: 'Server', url: 'https://server.voorbeeld/status.json', template: '', icon: '', openUrl: '', interval: 60, insecure: true },
@@ -94,14 +96,20 @@ function create() {
   openWindow('c:\\apps\\mail.exe', 'Postvak IN — Mail');
   openWindow('c:\\apps\\code.exe', 'dock.js — dockey');
 
+  // Wat apps aan hun knop doorgeven (?badges): aandacht, voortgang, badge.
+  const MONITOR = '\\\\.\\DISPLAY1';
+  const badgeIcon = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7.5" fill="#e5484d"/><text x="8" y="11.6" font-family="Arial" font-size="10" font-weight="700" text-anchor="middle" fill="#fff">3</text></svg>')}`;
+  const badges = params.has('badges')
+    ? { 'Documenten': { progress: 'normal', value: 0.62 }, 'Postvak IN — Mail': { flash: true, overlay: badgeIcon }, 'dock.js — dockey': { progress: 'error', value: 0.3 }, 'Muziek': { progress: 'busy' } }
+    : {};
   const snapshot = () => {
     const groups = config.pinned.map((p) => ({ ...p, pinned: true, windows: [] }));
     for (const w of windows) {
       let g = groups.find((x) => x.key === w.key);
       if (!g) groups.push((g = { key: w.key, name: apps[w.key]?.[0] ?? w.key, launch: w.key, pinned: false, windows: [] }));
-      g.windows.push({ hwnd: w.hwnd, title: w.title, active: w.hwnd === active && !w.min, min: w.min });
+      g.windows.push({ hwnd: w.hwnd, title: w.title, active: w.hwnd === active && !w.min, min: w.min, monitor: MONITOR, ...(badges[w.title] ?? {}) });
     }
-    return { groups, fullscreen: false, maximized };
+    return { groups, fullscreen: null, maximized: maximized ? [MONITOR] : [] };
   };
   const pushShell = () => bus.emit('shell', snapshot());
   const pushConfig = () => bus.emit('config', structuredClone(config));
@@ -234,7 +242,7 @@ function create() {
   };
 
   const commands = {
-    get_initial: () => ({ config: structuredClone(config), shell: snapshot(), stats: { ...stats }, media: { ...media }, version: '0.2.0', update: mockUpdate }),
+    get_initial: () => ({ monitor: params.has('extra') ? MONITOR.replace('1', '2') : MONITOR, mainDock: !params.has('extra'), config: structuredClone(config), shell: snapshot(), stats: { ...stats }, media: { ...media }, version: '0.2.0', update: mockUpdate }),
     check_update: async () => ({ update: mockUpdate, current: '0.2.0' }),
     install_update: async () => {
       await new Promise((r) => setTimeout(r, 800));
@@ -273,6 +281,12 @@ function create() {
       const j = i + delta;
       if (i < 0 || j < 0 || j >= config.pinned.length) return;
       [config.pinned[i], config.pinned[j]] = [config.pinned[j], config.pinned[i]];
+      pushConfig();
+      pushShell();
+    },
+    reorder_pins: ({ keys }) => {
+      const rank = (k) => (keys.includes(k) ? keys.indexOf(k) : Infinity);
+      config.pinned = [...config.pinned].sort((a, b) => rank(a.key) - rank(b.key));
       pushConfig();
       pushShell();
     },

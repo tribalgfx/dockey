@@ -545,6 +545,12 @@ function renderSettings() {
         toggle(() => config.expandOnMaximize, (c, v) => (c.expandOnMaximize = v)),
         t('expand.hint'),
       ),
+      field(t('monitors.label'), toggle(() => config.allMonitors, (c, v) => (c.allMonitors = v)), t('monitors.hint')),
+      field(
+        t('perMonitor.label'),
+        toggle(() => config.appsPerMonitor !== false, (c, v) => (c.appsPerMonitor = v)),
+        t('perMonitor.hint'),
+      ),
     ),
     group(t('group.widgets'), checks, placeRow, orderHint()),
     group(t('group.custom'), customSection()),

@@ -20,7 +20,15 @@ systeemvak en live widgets, terwijl de gewone Windows-taakbalk uit beeld gaat.
 - **Apps**: vastgemaakte apps en alle open vensters, gegroepeerd per app, met de
   echte app-iconen (lukt een icoon niet via de shell, dan probeert Dockey de
   systeemlijst, het exe-bestand en tot slot het pictogram van een open venster). Bij de eerste start worden de apps overgenomen die al aan de
-  Windows-taakbalk vastzitten.
+  Windows-taakbalk vastzitten. Wat apps op hun taakbalkknop laten zien, zie
+  je ook in Dockey: een knop die aandacht vraagt pulseert oranje, onder het
+  icoon verschijnt een voortgangsbalk (kopiëren, downloads) en op het icoon
+  een badge (zoals ongelezen berichten). Sleep apps om de volgorde te
+  veranderen.
+- **Meerdere schermen**: desgewenst een balk op elk scherm (Instellingen →
+  Plaats en vorm → Balk op alle schermen), met Start, de apps en de klok. Elke balk
+  toont dan de vensters op zijn eigen scherm; vastgemaakte apps staan op elke
+  balk.
 - **Widgets**: nu-speelt met albumhoes en knoppen, weer (klik voor de
   komende uren en dagen), CPU-grafiek en geheugen, netwerksnelheid, volume,
   accu, agenda en klok met kalender (incl. weeknummers), plus
@@ -67,6 +75,7 @@ systeemvak en live widgets, terwijl de gewone Windows-taakbalk uit beeld gaat.
 | Klik op ^ (systeemvak) | De overige pictogrammen; "Kiezen wat in de balk staat" zet ze vast |
 | Klik op een eigen widget | Het adres dat erbij hoort (bij een statuswidget: de link uit het antwoord) |
 | Widget vastpakken en slepen | Volgorde van de widgets veranderen (Instellingen → Standaardvolgorde zet hem terug) |
+| App vastpakken en slepen | Volgorde van de apps veranderen: vastgemaakte apps onderling (blijft bewaard), open apps onderling (tot Dockey herstart) |
 | Stipje op het puntenraster | Er is een nieuwe versie: rechtsklik op de balk → Bijwerken naar versie … |
 
 Menu's gaan dicht met dezelfde knop waarmee je ze opende (Start, snelle
@@ -271,7 +280,14 @@ Problemen (zoals een icoon dat niet lukt) komen in
   herstart van die app. Volume, netwerk en accu van Windows zelf zijn geen
   systeemvakpictogrammen; daarvoor heeft Dockey eigen widgets. Uitzetten kan
   bij de widgets (Systeemvak).
-- **Alleen het primaire scherm** krijgt een balk.
+- **Voortgangsbalken en badges op app-knoppen** komen binnen via het
+  systeemvak van Dockey: staat het systeemvak uit (bij de widgets), dan ziet
+  Dockey ze niet. Pulseren als een app aandacht vraagt, werkt altijd. Een app
+  die zijn badge al zette voordat Dockey startte, wordt gevraagd hem opnieuw
+  door te geven; doet hij dat niet, dan verschijnt hij bij de volgende
+  wijziging.
+- **Andere schermen** krijgen een balk met Start, de apps en de klok; de
+  overige widgets en het systeemvak staan op de balk van het primaire scherm.
 - **Verticale dock op een laag scherm**: past niet alles, dan scrolt de lijst
   met apps; zet in dat geval wat widgets uit.
 - **Glas vervaagt alleen op Windows 11.** Daar vervaagt Windows het
@@ -283,7 +299,6 @@ Problemen (zoals een icoon dat niet lukt) komen in
   als administrator draait.
 - **Vastgemaakte Store-apps** uit de Windows-taakbalk worden niet automatisch
   overgenomen; maak ze vast via rechtsklik zodra ze openstaan.
-- Geen slepen om apps te ordenen (wel "Naar links/rechts" in het menu).
 
 ## De interface bekijken zonder Windows
 
@@ -296,7 +311,8 @@ python3 -m http.server 8765 --directory ui
 
 Open dan `http://127.0.0.1:8765/index.html`. Met URL-parameters kies je een
 variant, bijvoorbeeld `?theme=glas&size=l&layout=bar&pos=left&popup=settings`;
-`?max=1` bootst een gemaximaliseerd venster na.
+`?max=1` bootst een gemaximaliseerd venster na, `?badges` toont aandacht,
+voortgang en badges op app-knoppen, en `?extra` de balk van een ander scherm.
 
 ## Opbouw
 
@@ -318,6 +334,8 @@ src-tauri/           Windows-kant (Rust, Tauri 2)
   src/keys.rs            Windows-sneltoetsen (Start, Taakweergave, …)
   src/config.rs          instellingen
   src/update.rs          nieuwe versie zoeken, downloaden, controleren en installeren
+  src/taskband.rs        aandacht, voortgang en badges op app-knoppen
+  src/tray.rs            het systeemvak in de balk
 ```
 
 Het logo is een D met ezelsoren (een knipoog naar *Donkie*); het gat in de D

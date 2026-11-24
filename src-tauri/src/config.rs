@@ -103,6 +103,11 @@ pub struct Config {
     pub update_check: bool,
     /// Live voorbeelden van de vensters tonen als de muis boven een app-icoon blijft.
     pub previews: bool,
+    /// Ook een balk op de andere schermen (met apps, Start en de klok).
+    pub all_monitors: bool,
+    /// Met meerdere balken: elke balk toont alleen de vensters op zijn eigen
+    /// scherm (vastgemaakte apps staan op elke balk).
+    pub apps_per_monitor: bool,
     pub widgets: Widgets,
     pub custom_widgets: Vec<CustomWidget>,
     /// Volgorde van de widgets (sleutels als "clock" of "custom:<id>"); leeg =
@@ -133,6 +138,8 @@ impl Default for Config {
             transparency: 0,
             update_check: true,
             previews: true,
+            all_monitors: false,
+            apps_per_monitor: true,
             widgets: Widgets::default(),
             custom_widgets: Vec::new(),
             widget_order: Vec::new(),

@@ -1,9 +1,10 @@
-//! Onze eigen balk aanmelden als "AppBar", zodat Windows schermruimte vrijhoudt
-//! en gemaximaliseerde vensters er niet overheen vallen.
+//! Onze balken aanmelden als "AppBar", zodat Windows schermruimte vrijhoudt
+//! en gemaximaliseerde vensters er niet overheen vallen. Elke balk (één per
+//! scherm) heeft zijn eigen aanmelding.
 
 use crate::config::Edge;
+use std::collections::HashMap;
 use std::mem::size_of;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use windows::core::w;
 use windows::Win32::Foundation::{HWND, RECT};
@@ -13,9 +14,8 @@ use windows::Win32::UI::Shell::{
 };
 use windows::Win32::UI::WindowsAndMessaging::{IsWindowVisible, RegisterWindowMessageW};
 
-static ACTIVE: AtomicBool = AtomicBool::new(false);
-/// De laatst gereserveerde rand en rechthoek.
-static RESERVED: Mutex<Option<(Edge, RECT)>> = Mutex::new(None);
+/// Per balkvenster: de laatst gereserveerde rand en rechthoek.
+static RESERVED: Mutex<Option<HashMap<isize, (Edge, RECT)>>> = Mutex::new(None);
 
 fn data(hwnd: HWND) -> APPBARDATA {
     APPBARDATA { cbSize: size_of::<APPBARDATA>() as u32, hWnd: hwnd, ..Default::default() }
@@ -49,20 +49,21 @@ pub fn reserve(hwnd: HWND, edge: Edge, rect: RECT) -> RECT {
         SHAppBarMessage(ABM_SETPOS, &mut abd);
         abd.rc
     });
-    ACTIVE.store(true, Ordering::SeqCst);
-    *RESERVED.lock().unwrap() = Some((edge, rc));
+    RESERVED.lock().unwrap().get_or_insert_with(HashMap::new).insert(hwnd.0 as isize, (edge, rc));
     rc
 }
 
-/// Laat het werkgebied van Windows onze balk niet meer vrij? Bijvoorbeeld
+/// Laat het werkgebied van Windows deze balk niet meer vrij? Bijvoorbeeld
 /// omdat de balk verborgen was toen we reserveerden (Explorer telt een
 /// verborgen AppBar niet mee), of omdat Explorer opnieuw rekende. Dan vallen
 /// gemaximaliseerde vensters over de balk heen.
 pub fn lost(hwnd: HWND) -> bool {
-    if !ACTIVE.load(Ordering::SeqCst) || !unsafe { IsWindowVisible(hwnd) }.as_bool() {
+    if !unsafe { IsWindowVisible(hwnd) }.as_bool() {
         return false;
     }
-    let Some((edge, rc)) = *RESERVED.lock().unwrap() else { return false };
+    let Some((edge, rc)) = RESERVED.lock().unwrap().as_ref().and_then(|m| m.get(&(hwnd.0 as isize)).copied()) else {
+        return false;
+    };
     let mut mi = MONITORINFO { cbSize: size_of::<MONITORINFO>() as u32, ..Default::default() };
     if !unsafe { GetMonitorInfoW(MonitorFromRect(&rc, MONITOR_DEFAULTTONEAREST), &mut mi) }.as_bool() {
         return false;
@@ -77,11 +78,11 @@ pub fn lost(hwnd: HWND) -> bool {
 }
 
 pub fn remove(hwnd: HWND) {
-    if ACTIVE.swap(false, Ordering::SeqCst) {
+    let had = RESERVED.lock().unwrap().as_mut().and_then(|m| m.remove(&(hwnd.0 as isize))).is_some();
+    if had {
         crate::tray::bypass(|| unsafe {
             let mut abd = data(hwnd);
             SHAppBarMessage(ABM_REMOVE, &mut abd);
         });
-        *RESERVED.lock().unwrap() = None;
     }
 }

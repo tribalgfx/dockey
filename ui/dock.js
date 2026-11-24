@@ -14,7 +14,9 @@ const el = (tag, cls, html) => {
 };
 
 const vertical = () => document.documentElement.dataset.orient === 'v';
-const state = { config: null, groups: [], maximized: false, stats: null, media: null, weather: null, cpu: [], events: [], calErrors: [], tray: [], update: null };
+// monitor: het scherm van deze balk; mainDock: de balk op het primaire scherm
+// (met widgets en systeemvak). Andere schermen krijgen een balk met apps en klok.
+const state = { monitor: null, mainDock: true, config: null, groups: [], maximized: false, stats: null, media: null, weather: null, cpu: [], events: [], calErrors: [], tray: [], update: null };
 
 // Een pictogram uit het systeemvak; klikken gaan door naar de app.
 function trayButton(item) {
@@ -112,12 +114,12 @@ const tiles = new Map(); // groepssleutel → knop
 const icons = new Map(); // groepssleutel → { url, pending, failedAt, triedWithWindow }
 
 function showIcon(tile, url) {
-  const img = tile.querySelector('img');
+  const img = tile.querySelector('img.icon');
   if (img) {
     if (img.src !== url) img.src = url;
     return;
   }
-  const fresh = el('img');
+  const fresh = el('img', 'icon');
   fresh.alt = '';
   fresh.draggable = false;
   fresh.src = url;
@@ -146,7 +148,7 @@ function ensureIcon(tile, g) {
     .finally(() => (entry.pending = false));
 }
 
-const tileIcon = (tile) => tile.querySelector('img')?.src;
+const tileIcon = (tile) => tile.querySelector('img.icon')?.src;
 
 // ------------------------------------------------------------ voorbeelden --
 //
@@ -269,11 +271,58 @@ function createTile(g) {
   return tile;
 }
 
+// Volgorde van de niet-vastgemaakte apps na slepen (alleen deze sessie).
+let appOrder = [];
+
+/** Toont deze balk alleen de vensters op zijn eigen scherm? */
+const perMonitor = () => Boolean(state.config?.allMonitors && state.config?.appsPerMonitor && state.monitor);
+
+/** De groepen voor deze balk, in volgorde: vastgemaakt (zoals in de
+ *  instellingen), dan de rest (eerst wat versleept is). */
+function shownGroups() {
+  let groups = state.groups;
+  if (perMonitor()) {
+    const mine = (w) => (w.monitor ? w.monitor === state.monitor : state.mainDock);
+    groups = groups.map((g) => ({ ...g, windows: g.windows.filter(mine) })).filter((g) => g.pinned || g.windows.length);
+  }
+  const pinRank = new Map((state.config?.pinned ?? []).map((p, i) => [p.key, i]));
+  const byPin = (g) => pinRank.get(g.key) ?? Infinity;
+  const byDrag = (g) => (appOrder.includes(g.key) ? appOrder.indexOf(g.key) : Infinity);
+  const pinned = groups.filter((g) => g.pinned).sort((a, b) => byPin(a) - byPin(b));
+  const rest = groups.filter((g) => !g.pinned).sort((a, b) => byDrag(a) - byDrag(b));
+  return [...pinned, ...rest];
+}
+
+/** Wat de vensters aan hun knop doorgeven: knipperen (aandacht), een
+ *  voortgangsbalk en een badge (zie taskband.rs). */
+function applyBadges(tile, g) {
+  const ws = g.windows;
+  tile.classList.toggle('attention', ws.some((w) => w.flash) && !ws.some((w) => w.active));
+  const busy = ws.find((w) => w.progress);
+  let bar = tile.querySelector('.progress');
+  if (busy) {
+    if (!bar) tile.append((bar = el('span', 'progress', '<i></i>')));
+    bar.dataset.state = busy.progress;
+    bar.firstChild.style.width = busy.progress === 'busy' ? '' : `${Math.round((busy.value ?? 0) * 100)}%`;
+  } else bar?.remove();
+  const overlay = ws.find((w) => w.overlay)?.overlay;
+  let badge = tile.querySelector('img.overlay');
+  if (overlay) {
+    if (!badge) {
+      tile.append((badge = el('img', 'overlay')));
+      badge.alt = '';
+      badge.draggable = false;
+    }
+    if (badge.src !== overlay) badge.src = overlay;
+  } else badge?.remove();
+}
+
 function renderApps() {
+  if (drag?.active && drag.sortable === appSort) return void (drag.rerender = true); // na het slepen
   const container = $('#apps');
   const alive = new Set();
   let cursor = container.firstChild;
-  for (const g of state.groups) {
+  for (const g of shownGroups()) {
     alive.add(g.key);
     let tile = tiles.get(g.key);
     if (!tile) {
@@ -281,11 +330,13 @@ function renderApps() {
       tiles.set(g.key, tile);
     }
     tile.group = g;
+    tile.dataset.zone = g.pinned ? 'pinned' : 'open';
     ensureIcon(tile, g);
     const n = g.windows.length;
     tile.classList.toggle('running', n > 0);
     tile.classList.toggle('multi', n > 1);
     tile.classList.toggle('active', g.windows.some((w) => w.active));
+    applyBadges(tile, g);
     // Met voorbeelden staat de titel al in het voorbeeld; geen tooltip erbovenop.
     tile.title = n && previewsOn() ? '' : n === 1 ? g.windows[0].title || g.name : n > 1 ? t('app.windows', g.name, n) : g.name;
     if (tile !== cursor) container.insertBefore(tile, cursor);
@@ -617,6 +668,8 @@ function buildWidgets() {
   for (const name of Object.keys(widgets)) delete widgets[name];
   customTimers.splice(0).forEach(clearInterval);
   for (const key of effectiveOrder(state.config)) {
+    // De balken op andere schermen hebben alleen de klok (zoals bij Windows).
+    if (!state.mainDock && key !== 'clock') continue;
     if (key.startsWith('custom:')) {
       const built = buildCustom(state.config.customWidgets.find((c) => `custom:${c.id}` === key));
       if (!built) continue;
@@ -639,10 +692,44 @@ function arrangeWidgets() {
 
 // ------------------------------------------------- slepen = volgorde --
 //
-// Een widget vastpakken en minstens 6 px bewegen begint met slepen; daaronder
-// blijft het een gewone klik. De andere widgets schuiven soepel opzij.
+// Een widget of app vastpakken en minstens 6 px bewegen begint met slepen;
+// daaronder blijft het een gewone klik. De rest schuift soepel opzij. Apps
+// blijven in hun eigen deel: vastgemaakt (de volgorde wordt bewaard) of open
+// (alleen deze sessie).
 
 let drag = null;
+
+const widgetSort = {
+  container: $('#widgets'),
+  pick: (target) => (state.mainDock && !target.closest('.ctl') ? target.closest('#widgets > [data-key]') : null), // mediaknoppen blijven knoppen
+  // Verborgen widgets (zoals de agenda zonder gekoppelde agenda) tellen niet mee.
+  peers: (item) => [...item.parentNode.children].filter((el) => !el.hidden),
+  done(container) {
+    const visible = [...container.children].map((el) => el.dataset.key);
+    const widgetOrder = mergeOrder(effectiveOrder(state.config), visible);
+    if (JSON.stringify(widgetOrder) !== JSON.stringify(effectiveOrder(state.config))) {
+      invoke('set_config', { config: { ...state.config, widgetOrder } });
+    }
+  },
+};
+
+const appSort = {
+  container: $('#apps'),
+  pick: (target) => target.closest('#apps > .tile'),
+  peers: (item) => [...item.parentNode.children].filter((el) => el.dataset.zone === item.dataset.zone),
+  start: () => hidePreview(),
+  done(container, item) {
+    const keys = [...container.children].filter((el) => el.dataset.zone === item.dataset.zone).map((el) => el.group.key);
+    if (item.dataset.zone === 'pinned') {
+      // Meteen zo tonen; de bewaarde instellingen volgen.
+      const rank = (p) => (keys.includes(p.key) ? keys.indexOf(p.key) : Infinity);
+      state.config = { ...state.config, pinned: [...state.config.pinned].sort((a, b) => rank(a) - rank(b)) };
+      invoke('reorder_pins', { keys });
+    } else {
+      appOrder = keys;
+    }
+  },
+};
 
 function flip(container, move) {
   const before = new Map([...container.children].map((el) => [el, el.getBoundingClientRect()]));
@@ -656,11 +743,11 @@ function flip(container, move) {
   }
 }
 
-function startDrag(e) {
+function startDrag(e, sortable) {
   if (e.button !== 0) return;
-  const item = e.target.closest('#widgets > [data-key]');
-  if (!item || e.target.closest('.ctl')) return; // mediaknoppen blijven knoppen
-  drag = { item, x: e.clientX, y: e.clientY, pointer: e.pointerId, active: false, before: [...item.parentNode.children] };
+  const item = sortable.pick(e.target);
+  if (!item) return;
+  drag = { sortable, item, x: e.clientX, y: e.clientY, pointer: e.pointerId, active: false, before: [...item.parentNode.children] };
 }
 
 function moveDrag(e) {
@@ -668,15 +755,16 @@ function moveDrag(e) {
   const container = drag.item.parentNode;
   if (!drag.active) {
     if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 6) return;
+    if (drag.sortable.peers(drag.item).length < 2) return;
     drag.active = true;
     container.setPointerCapture(e.pointerId);
     drag.item.classList.add('dragging');
     document.documentElement.classList.add('sorting');
+    drag.sortable.start?.();
   }
   const v = vertical();
   const pos = v ? e.clientY : e.clientX;
-  // Verborgen widgets (zoals de agenda zonder gekoppelde agenda) tellen niet mee.
-  const items = [...container.children].filter((el) => !el.hidden);
+  const items = drag.sortable.peers(drag.item);
   const own = items.indexOf(drag.item);
   const mids = items.map((el) => {
     const r = el.getBoundingClientRect();
@@ -698,27 +786,25 @@ function endDrag(e) {
   const container = done.item.parentNode;
   if (e.type === 'pointercancel') {
     container.append(...done.before);
-    return;
+  } else {
+    // De klik die op het loslaten volgt, mag niets openen.
+    const swallow = (ev) => {
+      ev.stopPropagation();
+      ev.preventDefault();
+    };
+    window.addEventListener('click', swallow, true);
+    setTimeout(() => window.removeEventListener('click', swallow, true), 0);
+    done.sortable.done(container, done.item);
   }
-  // De klik die op het loslaten volgt, mag niets openen.
-  const swallow = (ev) => {
-    ev.stopPropagation();
-    ev.preventDefault();
-  };
-  window.addEventListener('click', swallow, true);
-  setTimeout(() => window.removeEventListener('click', swallow, true), 0);
-
-  const visible = [...container.children].map((el) => el.dataset.key);
-  const widgetOrder = mergeOrder(effectiveOrder(state.config), visible);
-  if (JSON.stringify(widgetOrder) !== JSON.stringify(effectiveOrder(state.config))) {
-    invoke('set_config', { config: { ...state.config, widgetOrder } });
-  }
+  if (done.rerender) renderApps();
 }
 
-$('#widgets').addEventListener('pointerdown', startDrag);
-$('#widgets').addEventListener('pointermove', moveDrag);
-$('#widgets').addEventListener('pointerup', endDrag);
-$('#widgets').addEventListener('pointercancel', endDrag);
+for (const sortable of [widgetSort, appSort]) {
+  sortable.container.addEventListener('pointerdown', (e) => startDrag(e, sortable));
+  sortable.container.addEventListener('pointermove', moveDrag);
+  sortable.container.addEventListener('pointerup', endDrag);
+  sortable.container.addEventListener('pointercancel', endDrag);
+}
 
 const update = (...names) => names.forEach((n) => widgets[n]?.update());
 
@@ -766,7 +852,8 @@ function applyMaximized() {
 
 function setShell(snapshot) {
   state.groups = snapshot.groups;
-  state.maximized = snapshot.maximized;
+  // Staat er op het scherm van déze balk een venster tegen de balk aan?
+  state.maximized = state.monitor ? snapshot.maximized.includes(state.monitor) : snapshot.maximized.length > 0;
   renderApps();
   applyMaximized();
 }
@@ -789,6 +876,7 @@ function setConfig(config) {
     if (orderChanged) arrangeWidgets();
     update(...Object.keys(widgets)); // teksten kunnen per stand (horizontaal/verticaal) verschillen
   }
+  if (!state.mainDock) return; // agenda's en weer haalt de hoofdbalk op
   const calKey = JSON.stringify(config.calendars ?? []);
   if (calKey !== calendarKey) {
     calendarKey = calKey;
@@ -855,13 +943,14 @@ await Promise.all([
     if (over) clearTimeout(preview.hideTimer);
     else scheduleHide();
   }),
-  listen('open-settings', openSettings),
-  listen('open-update', openUpdate),
+  // Instellingen en updates opent de hoofdbalk (ook als het menu van een andere balk kwam).
+  listen('open-settings', () => state.mainDock && openSettings()),
+  listen('open-update', () => state.mainDock && openUpdate()),
   listen('update', (update) => {
     state.update = update;
     markUpdate();
   }),
-  listen('agenda:request', shareAgenda),
+  listen('agenda:request', () => state.mainDock && shareAgenda()),
   listen('tray', (items) => {
     state.tray = items;
     update('tray');
@@ -869,9 +958,13 @@ await Promise.all([
 ]);
 
 const initial = await invoke('get_initial');
+state.monitor = initial.monitor ?? null;
+state.mainDock = initial.mainDock !== false;
+document.documentElement.toggleAttribute('data-extra', !state.mainDock);
 setAcrylicSupport(initial.acrylic);
 state.update = initial.update ?? null;
 setSystemLanguage(initial.systemLanguage);
+state.config = null; // alles opnieuw opbouwen, nu bekend is welke balk dit is
 setConfig(initial.config);
 trackBackdrop($('#dock'));
 state.media = initial.media;
@@ -885,6 +978,6 @@ update('media');
 
 setInterval(() => update('clock'), 1000);
 setInterval(() => update('agenda'), 30 * 1000);
-setInterval(refreshCalendars, 15 * 60 * 1000);
+setInterval(() => state.mainDock && refreshCalendars(), 15 * 60 * 1000);
 setInterval(renderApps, 30 * 1000); // o.a. mislukte iconen opnieuw proberen
-setInterval(refreshWeather, 15 * 60 * 1000);
+setInterval(() => state.mainDock && refreshWeather(), 15 * 60 * 1000);
