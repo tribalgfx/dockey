@@ -10,8 +10,8 @@ export const glyph = {
     .join('')}</svg>`,
   // Startknoppen per stijl (zie startGlyphs); bewust geen logo's van bedrijven of projecten.
   // Fluent: vier vlakken in de accentkleur, zoals de Start-knop van Windows 11.
-  startFluent: `<svg viewBox="0 0 20 20" width="20" height="20" fill="currentColor">${[[1.5, 1.5], [10.5, 1.5], [1.5, 10.5], [10.5, 10.5]]
-    .map(([x, y]) => `<rect x="${x}" y="${y}" width="8" height="8" rx="1.2"/>`)
+  startFluent: `<svg viewBox="0 0 20 20" width="20" height="20" fill="currentColor">${[[1, 1], [10.4, 1], [1, 10.4], [10.4, 10.4]]
+    .map(([x, y]) => `<rect x="${x}" y="${y}" width="8.6" height="8.6" rx="1"/>`)
     .join('')}</svg>`,
   // Cupertino: een raster van afgeronde app-tegels, zoals Launchpad.
   startCupertino: `<svg viewBox="0 0 20 20" width="20" height="20" fill="currentColor">${[1.5, 8, 14.5]
@@ -19,8 +19,8 @@ export const glyph = {
     .join('')}</svg>`,
   // Adwaita: de werkbladaanwijzer van GNOME (een langwerpig pilletje en twee stipjes).
   startAdwaita: `<svg viewBox="0 0 20 20" width="20" height="20" fill="currentColor"><rect x="0.5" y="7.5" width="9" height="5" rx="2.5"/><circle cx="13.2" cy="10" r="2"/><circle cx="18" cy="10" r="2"/></svg>`,
-  // Breeze: een programmamenu (vierkant met regels), in het Plasma-blauw.
-  startBreeze: `<svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="2" y="2" width="16" height="16" rx="3.5"/><path d="M6 7h8M6 10h8M6 13h5"/></svg>`,
+  // Breeze: een ring met een stip, in het Plasma-blauw.
+  startBreeze: `<svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10" cy="10" r="7.5"/><circle cx="10" cy="10" r="2.5" fill="currentColor" stroke="none"/></svg>`,
   prev: solid('<path d="M4 3.5v9M12.5 3.6v8.8L5.8 8z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/>'),
   next: solid('<path d="M12 3.5v9M3.5 3.6v8.8L10.2 8z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/>'),
   play: solid('<path d="M4.5 2.8v10.4L13 8z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>'),
