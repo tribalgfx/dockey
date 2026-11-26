@@ -6,6 +6,7 @@ mod backdrop;
 mod config;
 mod icons;
 mod keys;
+mod look;
 mod media;
 mod net;
 mod pins;
@@ -246,6 +247,7 @@ fn get_initial(window: tauri::WebviewWindow, state: State<AppState>) -> Value {
         "stats": *state.stats.lock().unwrap(),
         "media": *state.media.lock().unwrap(),
         "acrylic": backdrop::supported(),
+        "look": look::read(),
         "systemLanguage": config::system_language(),
         "version": update::current(),
         "update": *state.update.lock().unwrap(),
@@ -285,9 +287,9 @@ fn install_update(state: State<AppState>) -> Result<(), String> {
 
 /// De interface meldt waar zijn glasvlak staat; daar komt de vervaging.
 #[tauri::command]
-fn set_backdrop(app: AppHandle, window: tauri::WebviewWindow, rect: Option<backdrop::Rect>, round: bool) {
+fn set_backdrop(app: AppHandle, window: tauri::WebviewWindow, rect: Option<backdrop::Rect>, radius: f64) {
     let label = window.label();
-    backdrop::store(label, rect, round);
+    backdrop::store(label, rect, radius);
     sync_backdrop(&app, label);
 }
 
@@ -734,6 +736,7 @@ fn shell_thread(app: AppHandle) {
     let mut all_monitors = state.config.lock().unwrap().all_monitors;
     let mut tick: u32 = 0;
     let mut outside: u32 = 0;
+    let mut system_look = look::read();
     loop {
         let cfg = state.config.lock().unwrap().clone();
         let snapshot = tracker.tick(&cfg);
@@ -789,6 +792,12 @@ fn shell_thread(app: AppHandle) {
                 geometry = now;
                 sync_docks(&app);
                 request_layout(&app);
+            }
+            // Licht/donker of accentkleur van Windows gewijzigd (thema Automatisch).
+            let now = look::read();
+            if now != system_look {
+                system_look = now;
+                let _ = app.emit("look", &system_look);
             }
         }
         tick = tick.wrapping_add(1);

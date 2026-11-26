@@ -1,4 +1,4 @@
-import { invoke, listen, emit, applyLook, setAcrylicSupport, trackBackdrop } from './api.js';
+import { invoke, listen, emit, applyLook, setAcrylicSupport, setSystemLook, trackBackdrop } from './api.js';
 import { t, locale, language, setSystemLanguage, errorText } from './i18n.js';
 import { glyph } from './glyphs.js';
 import { renderTemplate, parseStatus, newId } from './widgets.js';
@@ -19,6 +19,7 @@ const version = initial.version ?? '';
 let pendingUpdate = initial.update ?? null; // een nieuwere release, of null
 let current = null; // { id, kind, payload }
 setAcrylicSupport(initial.acrylic);
+setSystemLook(initial.look);
 setSystemLanguage(initial.systemLanguage);
 applyLook(config);
 trackBackdrop(panel);
@@ -104,7 +105,8 @@ function renderMenu({ title, icon, items }) {
 
 // ----------------------------------------------------------- instellingen --
 
-const THEMES = ['rookglas', 'glas', 'zwart', 'wit', 'middernacht'];
+const THEMES = ['auto', 'rookglas', 'glas', 'zwart', 'wit', 'middernacht', 'contrast'];
+const STYLES = ['dockey', 'fluent', 'cupertino', 'adwaita', 'breeze'];
 const WIDGETS = ['media', 'weather', 'system', 'network', 'tray', 'volume', 'battery', 'agenda', 'clock'];
 
 async function save(change) {
@@ -486,6 +488,25 @@ function renderSettings() {
     swatches.append(b);
   }
 
+  // Stijlen: een klein bureaublad met de balk in die stijl. Een andere stijl
+  // kiezen zet de kleuren op Automatisch (de eigen kleuren van de stijl);
+  // daarna kun je nog elke andere kleur kiezen.
+  const styles = el('div', 'styles');
+  const currentStyle = config.style || 'dockey';
+  for (const value of STYLES) {
+    const b = el('button', `swatch${currentStyle === value ? ' on' : ''}`, `<i class="st-${value}"><b></b></i><span></span><small></small>`);
+    b.querySelector('span').textContent = t(`style.${value}`);
+    b.querySelector('small').textContent = t(`style.${value}.like`);
+    b.addEventListener('click', () => {
+      if (value === currentStyle) return;
+      save((c) => {
+        c.style = value;
+        c.theme = 'auto';
+      });
+    });
+    styles.append(b);
+  }
+
   const checks = el('div', 'checks');
   for (const key of WIDGETS) {
     const on = !!config.widgets[key];
@@ -531,7 +552,8 @@ function renderSettings() {
   body.append(
     group(
       t('group.look'),
-      swatches,
+      field(t('style.label'), styles, t('style.hint'), true),
+      field(t('theme.label'), swatches, null, true),
       field(t('transparency.label'), slider('transparency', 0, 80, 5), t('transparency.hint'), true),
       field(t('lang.label'), seg('language', [['auto', t('lang.auto')], ['nl', 'Nederlands'], ['en', 'English']])),
     ),

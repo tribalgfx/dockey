@@ -1,4 +1,4 @@
-import { invoke, listen, emit, applyLook, setAcrylicSupport, trackBackdrop } from './api.js';
+import { invoke, listen, emit, applyLook, setAcrylicSupport, setSystemLook, trackBackdrop } from './api.js';
 import { t, locale, setSystemLanguage, errorText } from './i18n.js';
 import { glyph, batteryGlyph } from './glyphs.js';
 import { renderTemplate, parseStatus, effectiveOrder, mergeOrder } from './widgets.js';
@@ -962,6 +962,7 @@ state.monitor = initial.monitor ?? null;
 state.mainDock = initial.mainDock !== false;
 document.documentElement.toggleAttribute('data-extra', !state.mainDock);
 setAcrylicSupport(initial.acrylic);
+setSystemLook(initial.look);
 state.update = initial.update ?? null;
 setSystemLanguage(initial.systemLanguage);
 state.config = null; // alles opnieuw opbouwen, nu bekend is welke balk dit is

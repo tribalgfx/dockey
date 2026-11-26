@@ -2,7 +2,7 @@
 // icoon en sluitknop. Het beeld zelf tekent Windows (een DWM-thumbnail) op
 // de plek die wij doorgeven; deze pagina laat daar een leeg vlak voor vrij.
 // Het venster pakt nooit de focus; de balk regelt wanneer het verschijnt.
-import { invoke, listen, emit, applyLook, setAcrylicSupport, trackBackdrop, isMock } from './api.js';
+import { invoke, listen, emit, applyLook, setAcrylicSupport, setSystemLook, trackBackdrop, isMock } from './api.js';
 import { t, setSystemLanguage } from './i18n.js';
 import { glyph } from './glyphs.js';
 
@@ -15,6 +15,7 @@ const el = (tag, cls) => {
 
 const initial = await invoke('get_initial');
 setAcrylicSupport(initial.acrylic);
+setSystemLook(initial.look);
 setSystemLanguage(initial.systemLanguage);
 applyLook(initial.config);
 trackBackdrop(root);

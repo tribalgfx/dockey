@@ -125,18 +125,137 @@ html[data-theme="middernacht"] {
    straal van 8 px; de interface volgt die straal. De tint mag doorzichtiger,
    want wat erachter ligt is nu wazig. Zonder ondersteuning (Windows 10) blijft
    Glas zoals hierboven. */
-html[data-acrylic] {
-  --radius: 8px;
+html[data-acrylic][data-theme="glas"] {
   --bg: rgba(52, 64, 90, .5);
   --bg-max: rgba(58, 70, 96, .62);
   --panel: rgba(58, 70, 96, .62);
 }
-html[data-acrylic] .tile, html[data-acrylic] .w,
-html[data-acrylic][data-layout] .tile, html[data-acrylic][data-layout] .w { border-radius: 6px; }
-html[data-acrylic][data-layout="panel"]:not([data-max]) #dock { border-radius: var(--radius); }
-html[data-acrylic] #panel { border-radius: var(--radius); }
-html[data-acrylic] .card { border-radius: 8px; }
-html[data-acrylic] .item, html[data-acrylic] .item > button.go { border-radius: 6px; }
+/* De vormen hieronder horen bij de stijl Dockey; de andere stijlen (onderaan)
+   kiezen hun eigen hoeken. */
+html[data-acrylic][data-style="dockey"] { --radius: 8px; }
+html[data-acrylic][data-style="dockey"] .tile, html[data-acrylic][data-style="dockey"] .w,
+html[data-acrylic][data-style="dockey"][data-layout] .tile, html[data-acrylic][data-style="dockey"][data-layout] .w { border-radius: 6px; }
+html[data-acrylic][data-style="dockey"][data-layout="panel"]:not([data-max]) #dock { border-radius: var(--radius); }
+html[data-acrylic][data-style="dockey"] #panel { border-radius: var(--radius); }
+html[data-acrylic][data-style="dockey"] .card { border-radius: 8px; }
+html[data-acrylic][data-style="dockey"] .item, html[data-acrylic][data-style="dockey"] .item > button.go { border-radius: 6px; }
+
+/* Hoog contrast: zwart met witte lijnen en geel accent, goed leesbaar. */
+html[data-theme="contrast"] {
+  --bg: #000;
+  --bg-solid: #000;
+  --border: #fff;
+  --ring: #000;
+  --drop: none;
+  --ink: #fff;
+  --ink-2: #fff;
+  --hover: rgba(255, 255, 255, .22);
+  --pressed: rgba(255, 255, 255, .36);
+  --line: #fff;
+  --accent: #ffee00;
+  --panel: #000;
+  --card: #000;
+  --thumb: rgba(255, 238, 0, .35);
+  --danger: #ff7b7b;
+  --warn: #ffee00;
+  --bg-max: #000;
+}
+
+/* ------------------------------------------------- thema Automatisch -- */
+/* De kleuren van de gekozen stijl. Licht of donker volgt de taakbalk van
+   Windows (data-light) en het accent volgt de accentkleur van Windows
+   (--sys-accent), behalve bij Adwaita en Breeze: die houden hun eigen blauw. */
+html[data-theme="auto"] {
+  --sys: var(--sys-accent, #0078d4);
+  --bg: rgba(21, 23, 31, .8);
+  --bg-solid: #1c1e27;
+  --border: rgba(255, 255, 255, .06);
+  --ring: rgba(0, 0, 0, .32);
+  --drop: 0 2px 5px rgba(0, 0, 0, .3);
+  --ink: #fff;
+  --ink-2: rgba(255, 255, 255, .66);
+  --hover: rgba(255, 255, 255, .1);
+  --pressed: rgba(255, 255, 255, .16);
+  --line: rgba(255, 255, 255, .12);
+  --accent: color-mix(in srgb, var(--sys) 62%, #fff);
+  --panel: rgba(27, 29, 38, .98);
+  --card: rgba(255, 255, 255, .045);
+  --thumb: rgba(255, 255, 255, .17);
+  --danger: #ff8f8f;
+  --warn: #ffcf70;
+  --bg-max: rgba(25, 27, 35, .97);
+}
+html[data-theme="auto"][data-light] {
+  --bg: rgba(250, 250, 252, .96);
+  --bg-solid: #fafafc;
+  --border: rgba(0, 0, 0, .07);
+  --ring: rgba(0, 0, 0, .05);
+  --drop: 0 2px 6px rgba(20, 24, 40, .13);
+  --ink: #16181d;
+  --ink-2: rgba(22, 24, 29, .6);
+  --hover: rgba(0, 0, 0, .055);
+  --pressed: rgba(0, 0, 0, .1);
+  --line: rgba(0, 0, 0, .09);
+  --accent: color-mix(in srgb, var(--sys) 85%, #000);
+  --panel: #fdfdfe;
+  --card: rgba(0, 0, 0, .035);
+  --thumb: #fff;
+  --danger: #c62828;
+  --warn: #9a5b00;
+  --bg-max: #f6f6f8;
+}
+/* Fluent: de taakbalk van Windows 11 (#202020 / #f3f3f3, Mica-achtig). */
+html[data-theme="auto"][data-style="fluent"] {
+  --bg: rgba(32, 32, 32, .9); --bg-solid: #202020; --bg-max: #1c1c1c;
+  --panel: rgba(44, 44, 44, .98); --border: rgba(255, 255, 255, .08); --ring: rgba(0, 0, 0, .4);
+  --hover: rgba(255, 255, 255, .07); --pressed: rgba(255, 255, 255, .11); --card: rgba(255, 255, 255, .05);
+}
+html[data-theme="auto"][data-style="fluent"][data-light] {
+  --bg: rgba(243, 243, 243, .92); --bg-solid: #f3f3f3; --bg-max: #eeeeee;
+  --panel: rgba(249, 249, 249, .98); --border: rgba(0, 0, 0, .08); --ring: rgba(0, 0, 0, .06);
+  --hover: rgba(0, 0, 0, .045); --pressed: rgba(0, 0, 0, .08); --card: rgba(255, 255, 255, .7);
+}
+html[data-theme="auto"][data-style="fluent"][data-acrylic] { --bg: rgba(32, 32, 32, .62); --panel: rgba(40, 40, 40, .72); --bg-max: rgba(28, 28, 28, .9); }
+html[data-theme="auto"][data-style="fluent"][data-acrylic][data-light] { --bg: rgba(243, 243, 243, .68); --panel: rgba(249, 249, 249, .78); --bg-max: rgba(238, 238, 238, .92); }
+/* Cupertino: lichte of donkere, sterk vervaagde glasplaat met een lichte binnenrand. */
+html[data-theme="auto"][data-style="cupertino"] {
+  --bg: rgba(46, 46, 50, .86); --bg-solid: #2a2a2e; --bg-max: rgba(36, 36, 40, .97);
+  --panel: rgba(40, 40, 44, .97); --border: rgba(255, 255, 255, .14); --ring: rgba(0, 0, 0, .55);
+  --accent: color-mix(in srgb, var(--sys) 75%, #fff); --line: rgba(255, 255, 255, .16);
+}
+html[data-theme="auto"][data-style="cupertino"][data-light] {
+  --bg: rgba(246, 246, 248, .9); --bg-solid: #f4f4f6; --bg-max: rgba(240, 240, 242, .98);
+  --panel: rgba(250, 250, 252, .97); --border: rgba(255, 255, 255, .55); --ring: rgba(0, 0, 0, .14);
+  --accent: var(--sys); --ink: #1d1d1f; --ink-2: rgba(29, 29, 31, .58); --line: rgba(0, 0, 0, .1);
+}
+html[data-theme="auto"][data-style="cupertino"][data-acrylic] { --bg: rgba(46, 46, 50, .5); --panel: rgba(40, 40, 44, .72); }
+html[data-theme="auto"][data-style="cupertino"][data-acrylic][data-light] { --bg: rgba(250, 250, 252, .45); --panel: rgba(250, 250, 252, .74); }
+/* Adwaita (GNOME): effen en dekkend, met het blauw van GNOME. */
+html[data-theme="auto"][data-style="adwaita"] {
+  --bg: rgba(36, 36, 36, .97); --bg-solid: #242424; --bg-max: #1e1e1e;
+  --panel: #2e2e32; --border: rgba(255, 255, 255, .07); --ring: rgba(0, 0, 0, .5);
+  --ink: #fff; --ink-2: rgba(255, 255, 255, .7); --hover: rgba(255, 255, 255, .1); --pressed: rgba(255, 255, 255, .16);
+  --line: rgba(255, 255, 255, .13); --accent: #78aeed; --card: rgba(255, 255, 255, .08); --thumb: rgba(255, 255, 255, .15);
+}
+html[data-theme="auto"][data-style="adwaita"][data-light] {
+  --bg: rgba(250, 250, 250, .97); --bg-solid: #fafafa; --bg-max: #f6f6f6;
+  --panel: #ffffff; --border: rgba(0, 0, 0, .08); --ring: rgba(0, 0, 0, .07);
+  --ink: rgba(0, 0, 6, .8); --ink-2: rgba(0, 0, 6, .55); --hover: rgba(0, 0, 6, .07); --pressed: rgba(0, 0, 6, .12);
+  --line: rgba(0, 0, 6, .1); --accent: #1c71d8; --card: rgba(0, 0, 6, .04); --thumb: #fff;
+}
+/* Breeze (KDE Plasma): koel grijs met het Plasma-blauw. */
+html[data-theme="auto"][data-style="breeze"] {
+  --bg: rgba(32, 35, 38, .95); --bg-solid: #202326; --bg-max: #1c1e21;
+  --panel: #292c30; --border: rgba(255, 255, 255, .08); --ring: rgba(0, 0, 0, .45);
+  --ink: #fcfcfc; --ink-2: rgba(252, 252, 252, .66); --hover: rgba(61, 174, 233, .2); --pressed: rgba(61, 174, 233, .32);
+  --line: rgba(252, 252, 252, .12); --accent: #3daee9; --card: rgba(252, 252, 252, .05); --thumb: rgba(61, 174, 233, .35);
+}
+html[data-theme="auto"][data-style="breeze"][data-light] {
+  --bg: rgba(239, 240, 241, .96); --bg-solid: #eff0f1; --bg-max: #e8e9ea;
+  --panel: #fcfcfc; --border: rgba(0, 0, 0, .1); --ring: rgba(0, 0, 0, .08);
+  --ink: #232629; --ink-2: rgba(35, 38, 41, .62); --hover: rgba(61, 174, 233, .18); --pressed: rgba(61, 174, 233, .3);
+  --line: rgba(35, 38, 41, .12); --accent: #2980b9; --card: rgba(255, 255, 255, .7); --thumb: rgba(61, 174, 233, .3);
+}
 
 /* Afgeleide kleuren, voor elk thema gelijk. */
 html {
@@ -224,22 +343,29 @@ html[data-pos="top"] .tile:hover img, html[data-pos="top"] .tile:hover .letter {
   display: grid; place-items: center; border-radius: 30%;
   background: var(--pressed); font-weight: 600; font-size: calc(var(--icon) * .46); text-transform: uppercase;
 }
-/* Streepje onder een app: draait = kort, actief = lang, in accentkleur en met
-   een zachte gloed. */
+/* Streepje onder een app: draait = kort, actief = lang, in accentkleur. De
+   stijlen (onderaan) passen dit aan met variabelen: lengte per toestand
+   (--ind-run, --ind-multi, --ind-act), dikte (--ind-h), afstand tot de rand
+   (--ind-gap), ronding (--ind-r), kleuren (--ind-c, --ind-ca) en een extra
+   schaduw (--ind-shadow, bijv. een tweede stip). Verticaal wisselen lengte en
+   dikte vanzelf om. */
+.tile { --iw: 0px; }
+.tile.running { --iw: var(--ind-run, 5px); }
+.tile.multi { --iw: var(--ind-multi, 10px); }
+.tile.active, .tile.attention { --iw: var(--ind-act, 18px); }
 .tile::after {
-  content: ""; position: absolute; left: 50%; bottom: 1px; translate: -50% 0;
-  width: 0; height: 3px; border-radius: 3px; background: var(--ink-2); opacity: .85;
+  content: ""; position: absolute; left: 50%; bottom: var(--ind-gap, 1px); translate: -50% 0;
+  width: var(--iw); height: var(--ind-h, 3px); border-radius: var(--ind-r, 3px);
+  background: var(--ind-c, var(--ink-2)); opacity: .85; box-shadow: var(--ind-shadow, none);
   transition: width .26s var(--spring), height .26s var(--spring), background-color .2s, box-shadow .2s, opacity .2s;
 }
-html[data-pos="top"] .tile::after { bottom: auto; top: 1px; }
-.tile.running::after { width: 5px; }
-.tile.multi::after { width: 10px; }
-.tile.active::after { width: 18px; background: var(--accent); opacity: 1; }
+html[data-pos="top"] .tile::after { bottom: auto; top: var(--ind-gap, 1px); }
+.tile.active::after { background: var(--ind-ca, var(--accent)); opacity: 1; }
 .tile.active { background: var(--hover); }
 /* Een app vraagt aandacht: een paar keer oranje pulseren, daarna oranje
    blijven tot je het venster opent (zoals de Windows-taakbalk). */
 .tile.attention { background: rgba(245, 158, 11, .3); animation: attention .9s ease-in-out 6 alternate; }
-.tile.attention::after { width: 18px; background: #f59e0b; opacity: 1; }
+.tile.attention::after { background: #f59e0b; opacity: 1; }
 @keyframes attention { from { background-color: rgba(245, 158, 11, .5); } to { background-color: rgba(245, 158, 11, .12); } }
 /* Voortgang (kopiëren, downloaden): een balkje onder het icoon. */
 .tile .progress {
@@ -277,13 +403,12 @@ html[data-orient="v"] #apps::-webkit-scrollbar { display: none; }
 html[data-orient="v"] .sep { width: 52%; height: 1px; margin: 6px 0; background: linear-gradient(90deg, transparent, var(--line) 22%, var(--line) 78%, transparent); }
 html[data-orient="v"] #start { order: 9; }
 html[data-orient="v"] .tile::after {
-  left: 1px; right: auto; top: 50%; bottom: auto; translate: 0 -50%;
-  width: 3px; height: 0; transition: height .16s, background-color .16s;
+  left: var(--ind-gap, 1px); right: auto; top: 50%; bottom: auto; translate: 0 -50%;
+  width: var(--ind-h, 3px); height: var(--iw);
+  box-shadow: var(--ind-shadow-v, var(--ind-shadow, none));
+  transition: height .16s, background-color .16s;
 }
-html[data-pos="right"] .tile::after { left: auto; right: 1px; }
-html[data-orient="v"] .tile.running::after { width: 3px; height: 5px; }
-html[data-orient="v"] .tile.multi::after { height: 10px; }
-html[data-orient="v"] .tile.active::after { height: 16px; }
+html[data-pos="right"] .tile::after { left: auto; right: var(--ind-gap, 1px); }
 html[data-pos="left"] .tile:hover img, html[data-pos="left"] .tile:hover .letter { transform: translateX(1.5px) scale(1.07); }
 html[data-pos="right"] .tile:hover img, html[data-pos="right"] .tile:hover .letter { transform: translateX(-1.5px) scale(1.07); }
 
@@ -484,7 +609,10 @@ html[data-pos="right"] #panel { --panel-from: translateX(8px); transform-origin:
 .seg button.on { background: var(--thumb); color: var(--ink); box-shadow: 0 0 0 .5px var(--line), 0 1px 2px rgba(0, 0, 0, .14); }
 
 /* Thema's: een klein bureaublad met de balk erop, in de kleur van het thema. */
-.swatches { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; padding-bottom: 12px !important; }
+.swatches { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px 8px; }
+.swatches .swatch i { aspect-ratio: 2 / 1; }
+.styles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.swatch small { margin-top: -5px; font-size: 10.5px; opacity: .8; white-space: nowrap; }
 .swatch { display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--ink-2); font-size: 11.5px; }
 .swatch i {
   position: relative; display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 7px; overflow: hidden;
@@ -510,6 +638,26 @@ html[data-pos="right"] #panel { --panel-from: translateX(8px); transform-origin:
 .swatch i.zwart { --sw: #0b0b0d; --dot: rgba(255, 255, 255, .7); }
 .swatch i.wit { --sw: #fafafc; --dot: rgba(0, 0, 0, .5); }
 .swatch i.middernacht { --sw: linear-gradient(120deg, #101438, #2c1a52); --dot: #b9c0ff; }
+/* Automatisch: half donker, half licht, met een stip in de accentkleur. */
+.swatch i.auto { --sw: linear-gradient(115deg, #1e2028 50%, #f4f4f6 50%); --dot: #8a8f99; }
+.swatch i.auto b::after { background: var(--sys-accent, #0078d4); }
+.swatch i.contrast { --sw: #000; --dot: #ffee00; }
+.swatch i.contrast b { box-shadow: 0 0 0 1px #fff; }
+
+/* Stijlen: dezelfde miniatuur, met de vorm van de balk in die stijl. */
+.styles .swatch i b { --sw: rgba(24, 26, 34, .9); --dot: rgba(255, 255, 255, .8); }
+.styles .swatch i b::before {
+  content: ""; position: absolute; left: 50%; bottom: 1px; width: 5px; height: 1.5px; margin-left: -8.5px;
+  border-radius: 1px; background: #7cc4ff;
+}
+.swatch i.st-fluent b { left: 0; right: 0; bottom: 0; border-radius: 0; --sw: rgba(32, 32, 32, .92); }
+.swatch i.st-fluent b::before { width: 6px; margin-left: -9px; background: #4cc2ff; }
+.swatch i.st-cupertino b { left: 20%; right: 20%; bottom: 4px; height: 11px; border-radius: 4px; --sw: rgba(240, 240, 244, .55); --dot: rgba(0, 0, 0, .55); box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .7), 0 1px 3px rgba(0, 0, 0, .25); }
+.swatch i.st-cupertino b::before { width: 2px; height: 2px; border-radius: 50%; margin-left: -7px; background: rgba(0, 0, 0, .6); }
+.swatch i.st-adwaita b { left: 16%; right: 16%; border-radius: 5px; --sw: #242424; }
+.swatch i.st-adwaita b::before { width: 2px; height: 2px; border-radius: 50%; margin-left: -7px; background: #fff; }
+.swatch i.st-breeze b { left: 4px; right: 4px; bottom: 3px; border-radius: 2px; --sw: rgba(32, 35, 38, .95); }
+.swatch i.st-breeze b::before { bottom: 0; width: 5px; margin-left: -8.5px; height: 1.5px; background: #3daee9; }
 
 /* Schakelaar zoals in Windows 11: open rand als hij uit staat. */
 .toggle { position: relative; width: 40px; height: 20px; border-radius: 10px; flex: none; background: transparent; box-shadow: inset 0 0 0 1px var(--ink-2); transition: background-color .18s, box-shadow .18s; }
@@ -720,6 +868,109 @@ html[data-acrylic] #preview { border-radius: var(--radius); }
 .pv-icon { width: 40px; height: 40px; opacity: .9; }
 /* In de browser is er geen DWM: een nepvenster op de plek van het beeld. */
 html.mock .pv-shot { background: linear-gradient(160deg, #e9edf5, #c9d2e3); box-shadow: inset 0 14px 0 #d7dce6; }
+
+/* ============================================================ stijlen -- */
+/* Een stijl bepaalt vorm en gedrag (hoeken, het streepje of stipje onder een
+   app, hoveren); de kleuren komen van het thema. Dock, Paneel en Balk blijven
+   in elke stijl werken. Dockey is de stijl hierboven. */
+
+/* Fluent, zoals de taakbalk van Windows 11: kleine hoeken (8 px vlakken, 4 px
+   knoppen), een kort streepje onder draaiende apps en een lang streepje in de
+   accentkleur onder de actieve app, geen beweging bij hoveren. Als Paneel of
+   Balk (en uitgeschoven tegen een gemaximaliseerd venster) staan Start en de
+   apps in het midden, de widgets rechts. */
+html[data-style="fluent"] { --radius: 8px; --ind-run: 6px; --ind-multi: 6px; --ind-act: 16px; --ind-gap: 2px; }
+html[data-style="fluent"] .tile, html[data-style="fluent"] .w,
+html[data-style="fluent"][data-layout] .tile, html[data-style="fluent"][data-layout] .w { border-radius: 4px; }
+html[data-style="fluent"][data-layout="panel"]:not([data-max]) #dock { border-radius: var(--radius); }
+html[data-style="fluent"] .tile:hover img, html[data-style="fluent"] .tile:hover .letter { transform: none; }
+html[data-style="fluent"] .tile:active img, html[data-style="fluent"] .tile:active .letter { transform: scale(.86); }
+html[data-style="fluent"][data-orient="h"]:is([data-layout="bar"], [data-layout="panel"], [data-max]) #dock {
+  display: grid; grid-template-columns: 1fr auto minmax(0, max-content) 1fr; column-gap: 3px;
+}
+html[data-style="fluent"][data-orient="h"]:is([data-layout="bar"], [data-layout="panel"], [data-max]) #start { grid-column: 2; }
+html[data-style="fluent"][data-orient="h"]:is([data-layout="bar"], [data-layout="panel"], [data-max]) #apps { grid-column: 3; }
+html[data-style="fluent"][data-orient="h"]:is([data-layout="bar"], [data-layout="panel"], [data-max]) #sep { display: none; }
+html[data-style="fluent"][data-orient="h"]:is([data-layout="bar"], [data-layout="panel"], [data-max]) #widgets { grid-column: 4; justify-self: end; }
+html[data-style="fluent"] #panel, html[data-style="fluent"] #panel.menu, html[data-style="fluent"] #preview { border-radius: 8px; }
+html[data-style="fluent"] .card, html[data-style="fluent"] .item, html[data-style="fluent"] .item > button.go { border-radius: 4px; }
+
+/* Cupertino, zoals de dock van macOS: een ronde glasplaat, geen vlak achter
+   een app, een stipje onder elke app die draait en iconen die bij hoveren
+   groeien (de buren een beetje mee). */
+html[data-style="cupertino"] {
+  --radius: calc(var(--pill) * .33);
+  --ind-run: 4px; --ind-multi: 4px; --ind-act: 4px; --ind-h: 4px; --ind-r: 50%; --ind-gap: 0px;
+  --ind-c: var(--ink); --ind-ca: var(--ink);
+}
+html[data-style="cupertino"] #dock { box-shadow: 0 0 0 .5px var(--ring, transparent), 0 3px 6px rgba(0, 0, 0, .22); }
+html[data-style="cupertino"] .tile:hover, html[data-style="cupertino"] .tile.active,
+html[data-style="cupertino"] .tile.open, html[data-style="cupertino"] .tile:active { background: transparent; }
+html[data-style="cupertino"] .tile img, html[data-style="cupertino"] .tile .letter { transform-origin: 50% 100%; transition: transform .2s var(--ease), filter .1s; }
+html[data-style="cupertino"][data-pos="top"] .tile img, html[data-style="cupertino"][data-pos="top"] .tile .letter { transform-origin: 50% 0; }
+html[data-style="cupertino"][data-pos="left"] .tile img, html[data-style="cupertino"][data-pos="left"] .tile .letter { transform-origin: 0 50%; }
+html[data-style="cupertino"][data-pos="right"] .tile img, html[data-style="cupertino"][data-pos="right"] .tile .letter { transform-origin: 100% 50%; }
+html[data-style="cupertino"] .tile:hover img, html[data-style="cupertino"] .tile:hover .letter { transform: scale(1.18); }
+html[data-style="cupertino"] .tile:hover + .tile img, html[data-style="cupertino"] .tile:hover + .tile .letter,
+html[data-style="cupertino"] .tile:has(+ .tile:hover) img, html[data-style="cupertino"] .tile:has(+ .tile:hover) .letter { transform: scale(1.07); }
+html[data-style="cupertino"] .tile:active img, html[data-style="cupertino"] .tile:active .letter { transform: scale(1.18); filter: brightness(.65); }
+html[data-style="cupertino"] #panel { border-radius: 14px; }
+html[data-style="cupertino"] #panel.menu, html[data-style="cupertino"] .card { border-radius: 10px; }
+html[data-style="cupertino"] #preview { border-radius: 12px; }
+html[data-style="cupertino"] .item, html[data-style="cupertino"] .item > button.go { border-radius: 6px; }
+
+/* Adwaita, zoals GNOME: ruime ronde vormen, stipjes onder draaiende apps (twee
+   bij meerdere vensters), geen apart vlak voor de actieve app. */
+html[data-style="adwaita"] {
+  --ind-run: 5px; --ind-multi: 5px; --ind-act: 5px; --ind-h: 5px; --ind-r: 50%; --ind-gap: 1px;
+  --ind-c: var(--ink); --ind-ca: var(--ink);
+  --display: "Adwaita Sans", Cantarell, "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  font-family: "Adwaita Sans", Cantarell, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+}
+html[data-style="adwaita"] .tile.multi { --ind-shadow: 8px 0 0 var(--ink); --ind-shadow-v: 0 8px 0 var(--ink); }
+html[data-style="adwaita"] .tile.multi::after { translate: calc(-50% - 4px) 0; }
+html[data-style="adwaita"][data-orient="v"] .tile.multi::after { translate: 0 calc(-50% - 4px); }
+html[data-style="adwaita"] .tile.active:not(:hover) { background: transparent; }
+html[data-style="adwaita"] .tile:hover img, html[data-style="adwaita"] .tile:hover .letter { transform: none; }
+html[data-style="adwaita"] .tile:active img, html[data-style="adwaita"] .tile:active .letter { transform: scale(.9); }
+html[data-style="adwaita"] #panel, html[data-style="adwaita"] #panel.menu, html[data-style="adwaita"] .card,
+html[data-style="adwaita"] #preview { border-radius: 12px; }
+html[data-style="adwaita"] .item, html[data-style="adwaita"] .item > button.go { border-radius: 6px; }
+
+/* Breeze, zoals KDE Plasma: strak met kleine hoeken, een lijn over bijna de
+   hele breedte van de app tegen de rand van het scherm, en een blauwe rand
+   bij hoveren. */
+html[data-style="breeze"] {
+  --radius: calc(var(--pill) * .18);
+  --ind-run: calc(100% - 22px); --ind-multi: calc(100% - 14px); --ind-act: calc(100% - 6px);
+  --ind-h: 3px; --ind-r: 1.5px; --ind-gap: 0px;
+  font-family: "Noto Sans", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+}
+html[data-style="breeze"] .tile, html[data-style="breeze"] .w,
+html[data-style="breeze"][data-layout] .tile, html[data-style="breeze"][data-layout] .w { border-radius: 4px; }
+html[data-style="breeze"][data-layout="panel"]:not([data-max]) #dock { border-radius: var(--radius); }
+html[data-style="breeze"] .tile.active { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+html[data-style="breeze"] .tile:hover, html[data-style="breeze"] .w.click:hover {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+html[data-style="breeze"] .tile:active, html[data-style="breeze"] .tile.open,
+html[data-style="breeze"] .w.click:active, html[data-style="breeze"] .w.open { background: color-mix(in srgb, var(--accent) 32%, transparent); }
+html[data-style="breeze"] .tile:hover img, html[data-style="breeze"] .tile:hover .letter { transform: none; }
+html[data-style="breeze"] .tile:active img, html[data-style="breeze"] .tile:active .letter { transform: scale(.9); }
+html[data-style="breeze"] #panel { border-radius: 8px; }
+html[data-style="breeze"] #panel.menu, html[data-style="breeze"] #preview { border-radius: 5px; }
+html[data-style="breeze"] .card { border-radius: 6px; }
+html[data-style="breeze"] .item, html[data-style="breeze"] .item > button.go { border-radius: 3px; }
+
+/* Met echte vervaging: Windows rondt het vervaagde vlak af met hoogstens 8 px,
+   dus glasvlakken krijgen nooit een grotere straal (anders steekt de vervaging
+   buiten de ronde hoek uit). */
+html[data-acrylic]:is([data-style="cupertino"], [data-style="breeze"]) { --radius: 8px; }
+html[data-acrylic][data-style="cupertino"][data-layout="panel"]:not([data-max]) #dock { border-radius: var(--radius); }
+html[data-acrylic][data-style="cupertino"] .w { border-radius: 6px; }
+html[data-acrylic][data-style] #panel, html[data-acrylic]:is([data-style="cupertino"], [data-style="adwaita"]) #panel.menu,
+html[data-acrylic]:is([data-style="cupertino"], [data-style="adwaita"]) #preview { border-radius: 8px; }
 
 /* -------------------------------------------- voorbeeld in de browser -- */
 html.mock body.dock-page {

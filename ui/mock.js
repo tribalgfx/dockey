@@ -1,7 +1,7 @@
 // Nagebootste backend voor in de browser (ontwikkelen en screenshots).
 // In de echte app wordt dit bestand niet geladen.
 //
-// URL-parameters: ?lang=en&theme=wit&size=l&layout=bar&pos=top&max=1&popup=settings|calendar|menu|dock-menu
+// URL-parameters: ?lang=en&theme=wit&style=fluent&light=1&accent=%23e81123&size=l&layout=bar&pos=top&max=1&popup=settings|calendar|menu|dock-menu
 //                 &geenvoorbeelden (venstervoorbeelden uit)
 
 function create() {
@@ -49,6 +49,7 @@ function create() {
     position: params.get('pos') ?? 'bottom',
     layout: params.get('layout') ?? 'dock',
     theme: params.get('theme') ?? 'rookglas',
+    style: params.get('style') ?? 'dockey',
     size: params.get('size') ?? 'm',
     language: params.get('lang') ?? 'auto',
     transparency: Number(params.get('transparantie') ?? 0),
@@ -242,7 +243,7 @@ function create() {
   };
 
   const commands = {
-    get_initial: () => ({ monitor: params.has('extra') ? MONITOR.replace('1', '2') : MONITOR, mainDock: !params.has('extra'), config: structuredClone(config), shell: snapshot(), stats: { ...stats }, media: { ...media }, version: '0.2.0', update: mockUpdate }),
+    get_initial: () => ({ monitor: params.has('extra') ? MONITOR.replace('1', '2') : MONITOR, mainDock: !params.has('extra'), config: structuredClone(config), shell: snapshot(), stats: { ...stats }, media: { ...media }, look: { light: params.has('light'), accent: params.get('accent') ?? '#0078d4' }, version: '0.2.0', update: mockUpdate }),
     check_update: async () => ({ update: mockUpdate, current: '0.2.0' }),
     install_update: async () => {
       await new Promise((r) => setTimeout(r, 800));

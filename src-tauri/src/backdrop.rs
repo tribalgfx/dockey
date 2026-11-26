@@ -1,11 +1,11 @@
-//! Echte vervaging (acrylic) achter het glasthema.
+//! Echte vervaging (acrylic) achter het glasthema en de stijlen Fluent en Cupertino.
 //!
 //! Windows vervaagt altijd een heel venster, terwijl het venster van de balk de
 //! hele strook over de schermbreedte is (met een doorzichtige marge rond de
 //! zwevende dock) en het paneelvenster een marge voor de schaduw heeft. Daarom
 //! krijgt elk glasvlak een eigen, onzichtbaar achtergrondvenster precies op de
-//! plek van dat vlak, direct eronder. Windows 11 rondt de hoeken af (8 px);
-//! het glasthema gebruikt in de interface dezelfde straal.
+//! plek van dat vlak, direct eronder. Windows 11 rondt de hoeken af met 4 of
+//! 8 px; de interface volgt die straal bij glasvlakken.
 //!
 //! De vervaging zelf komt van SetWindowCompositionAttribute met
 //! ACCENT_ENABLE_ACRYLICBLURBEHIND (wat ook taakbalk-tools gebruiken). De
@@ -44,9 +44,10 @@ struct Surface {
     /// Het achtergrondvenster (0 = nog niet gemaakt).
     hwnd: isize,
     rect: Option<Rect>,
-    round: bool,
+    /// Hoekstraal van het glasvlak in CSS-pixels (0 = rechte hoeken).
+    radius: f64,
     /// Laatst ingestelde hoekvoorkeur, om DWM niet elke keer aan te roepen.
-    rounded: Option<bool>,
+    corners: Option<u32>,
 }
 
 fn surfaces() -> &'static Mutex<HashMap<String, Surface>> {
@@ -59,6 +60,7 @@ const DWMWA_WINDOW_CORNER_PREFERENCE: i32 = 33;
 const DWMWA_BORDER_COLOR: i32 = 34;
 const DWMWCP_DONOTROUND: u32 = 1;
 const DWMWCP_ROUND: u32 = 2;
+const DWMWCP_ROUNDSMALL: u32 = 3;
 const DWMWA_COLOR_NONE: u32 = 0xFFFF_FFFE;
 
 // SetWindowCompositionAttribute (niet gedocumenteerd, user32).
@@ -112,11 +114,11 @@ pub fn supported() -> bool {
 
 /// Onthoudt waar het glasvlak van een venster staat (None = geen vervaging).
 /// Daarna `apply` aanroepen, op de hoofdthread.
-pub fn store(label: &str, rect: Option<Rect>, round: bool) {
+pub fn store(label: &str, rect: Option<Rect>, radius: f64) {
     let mut all = surfaces().lock().unwrap();
     let s = all.entry(label.to_string()).or_default();
     s.rect = rect;
-    s.round = round;
+    s.radius = radius;
 }
 
 /// Verbergt het achtergrondvenster van een venster (kan vanaf elke thread).
@@ -157,14 +159,24 @@ pub fn apply(app: &AppHandle, label: &str) {
         }
     }
     let h = HWND(s.hwnd as *mut c_void);
-    if s.rounded != Some(s.round) {
-        s.rounded = Some(s.round);
-        set_attr(h, DWMWA_WINDOW_CORNER_PREFERENCE, if s.round { DWMWCP_ROUND } else { DWMWCP_DONOTROUND });
-    }
     let x = origin.x + (rect.x * scale).round() as i32;
     let y = origin.y + (rect.y * scale).round() as i32;
     let w = (rect.width * scale).round() as i32;
     let hgt = (rect.height * scale).round() as i32;
+    // Hoeken: Windows 11 kan de vervaging alleen met 4 of 8 px afronden (een
+    // eigen vensterregio negeert de vervaging); de interface houdt de hoeken
+    // van glasvlakken daarom op hoogstens 8 px.
+    let corners = if s.radius < 2.0 {
+        DWMWCP_DONOTROUND
+    } else if s.radius < 6.0 {
+        DWMWCP_ROUNDSMALL
+    } else {
+        DWMWCP_ROUND
+    };
+    if s.corners != Some(corners) {
+        s.corners = Some(corners);
+        set_attr(h, DWMWA_WINDOW_CORNER_PREFERENCE, corners);
+    }
     unsafe {
         // Direct onder het venster zelf in de stapel; beide staan "altijd bovenop".
         let _ = SetWindowPos(h, Some(owner), x, y, w, hgt, SWP_NOACTIVATE | SWP_SHOWWINDOW);

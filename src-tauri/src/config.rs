@@ -81,8 +81,12 @@ pub struct Config {
     /// "dock" (zwevende pil) | "panel" (zwevend over de volle breedte, zoals KDE
     /// Plasma) | "bar" (volle breedte, tegen de rand)
     pub layout: String,
-    /// "glas" | "rookglas" | "zwart" | "wit" | "middernacht"
+    /// Kleuren: "auto" (die van de stijl; licht/donker en accentkleur volgen
+    /// Windows) | "glas" | "rookglas" | "zwart" | "wit" | "middernacht" | "contrast"
     pub theme: String,
+    /// Vorm en gedrag van de balk: "dockey" | "fluent" (Windows 11) |
+    /// "cupertino" (macOS) | "adwaita" (GNOME) | "breeze" (KDE Plasma)
+    pub style: String,
     /// "s" | "m" | "l"
     pub size: String,
     /// Taal van de interface: "auto" (de weergavetaal van Windows) | "nl" | "en"
@@ -127,6 +131,7 @@ impl Default for Config {
             position: "bottom".into(),
             layout: "dock".into(),
             theme: "rookglas".into(),
+            style: "dockey".into(),
             size: "m".into(),
             language: "auto".into(),
             taskbar: "hidden".into(),
