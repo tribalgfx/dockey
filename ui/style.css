@@ -400,7 +400,7 @@ html[data-style="fluent"] .start-glyph[data-for="fluent"],
 html[data-style="cupertino"] .start-glyph[data-for="cupertino"],
 html[data-style="adwaita"] .start-glyph[data-for="adwaita"],
 html[data-style="breeze"] .start-glyph[data-for="breeze"] { display: grid; }
-html[data-style="fluent"] #start, html[data-style="breeze"] #start { color: var(--accent); }
+html[data-style="fluent"] #start { color: var(--accent); }
 html[data-style="fluent"] #start svg { width: calc(var(--icon) * .76); height: calc(var(--icon) * .76); }
 html[data-style="adwaita"] #start svg, html[data-style="breeze"] #start svg { width: calc(var(--icon) * .72); height: calc(var(--icon) * .72); }
 

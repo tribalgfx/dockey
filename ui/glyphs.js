@@ -19,7 +19,7 @@ export const glyph = {
     .join('')}</svg>`,
   // Adwaita: de werkbladaanwijzer van GNOME (een langwerpig pilletje en twee stipjes).
   startAdwaita: `<svg viewBox="0 0 20 20" width="20" height="20" fill="currentColor"><rect x="0.5" y="7.5" width="9" height="5" rx="2.5"/><circle cx="13.2" cy="10" r="2"/><circle cx="18" cy="10" r="2"/></svg>`,
-  // Breeze: een ring met een stip, in het Plasma-blauw.
+  // Breeze: een ring met een stip, in de tekstkleur.
   startBreeze: `<svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10" cy="10" r="7.5"/><circle cx="10" cy="10" r="2.5" fill="currentColor" stroke="none"/></svg>`,
   prev: solid('<path d="M4 3.5v9M12.5 3.6v8.8L5.8 8z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/>'),
   next: solid('<path d="M12 3.5v9M3.5 3.6v8.8L10.2 8z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/>'),
