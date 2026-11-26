@@ -37,8 +37,13 @@ sight.
 - **System tray**: the icons of apps (OneDrive, Discord, Steam, …) grouped in
   the bar. Pinned icons sit in the bar, the rest is behind ^; clicks and right
   clicks go straight through to the app.
-- **Appearance**: five styles (Smoke, Glass, Black, White, Night), three sizes,
-  and three shapes: a floating dock, a floating full-width panel (like KDE
+- **Styles**: the shape and behaviour of the bar like Windows 11 (Fluent),
+  macOS (Cupertino), GNOME (Adwaita) or KDE Plasma (Breeze), or Dockey's own
+  style: corners, the line or dot under apps, centred apps (Fluent) or icons
+  that grow on hover (Cupertino).
+- **Appearance**: colours Automatic (the style's own colours, following light
+  or dark mode and the accent colour of Windows), Smoke, Glass, Black, White,
+  Night and Contrast; three sizes, and three shapes: a floating dock, a floating full-width panel (like KDE
   Plasma) or a bar against the screen edge; at the bottom, top, left or right.
   Left or right gives a look like Ubuntu's dock: apps at the top, compact
   widgets below them and the button with the dot grid at the bottom. A slider
@@ -307,7 +312,7 @@ python3 -m http.server 8765 --directory ui
 ```
 
 Then open `http://127.0.0.1:8765/index.html`. URL parameters pick a variant,
-for example `?theme=glas&size=l&layout=bar&pos=left&popup=settings`;
+for example `?theme=glas&style=fluent&size=l&layout=bar&pos=left&popup=settings`;
 `?max=1` simulates a maximised window, `?badges` shows attention, progress and
 badges on app buttons, and `?extra` shows the bar of another display.
 
@@ -323,7 +328,8 @@ src-tauri/           Windows side (Rust, Tauri 2)
   src/shell.rs           tracking open windows, activate/minimise/close
   src/taskbar.rs         hiding and restoring the Windows taskbar
   src/appbar.rs          reserving screen space
-  src/backdrop.rs        real blur (acrylic) behind the Glass theme
+  src/backdrop.rs        real blur (acrylic) behind Glass, Fluent and Cupertino
+  src/look.rs            light/dark mode and accent colour of Windows
   src/icons.rs           fetching app icons
   src/pins.rs            taking over pinned apps from Windows
   src/stats.rs           CPU, memory, battery, network, volume

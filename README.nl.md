@@ -36,8 +36,13 @@ systeemvak en live widgets, terwijl de gewone Windows-taakbalk uit beeld gaat.
 - **Systeemvak**: de pictogrammen van apps (OneDrive, Discord, Steam, …)
   gegroepeerd in de balk. Vastgezette pictogrammen staan in de balk, de rest
   zit achter ^; klikken en rechtsklikken gaan gewoon door naar de app.
-- **Uiterlijk**: vijf stijlen (Rookglas, Glas, Zwart, Wit, Nacht), drie
-  groottes, en drie vormen: een zwevende dock, een zwevend paneel over de volle
+- **Stijlen**: vorm en gedrag van de balk zoals Windows 11 (Fluent), macOS
+  (Cupertino), GNOME (Adwaita) of KDE Plasma (Breeze), of de eigen stijl van
+  Dockey: hoeken, het streepje of stipje onder apps, apps in het midden
+  (Fluent) of iconen die groeien bij hoveren (Cupertino).
+- **Uiterlijk**: de kleuren Automatisch (de eigen kleuren van de stijl, met
+  licht/donker en de accentkleur van Windows), Rookglas, Glas, Zwart, Wit,
+  Nacht en Contrast; drie groottes, en drie vormen: een zwevende dock, een zwevend paneel over de volle
   breedte (zoals KDE Plasma) of een balk tegen de rand; onder, boven, links of
   rechts. Links of rechts geeft een look zoals de dock van Ubuntu: apps
   bovenaan, compacte widgets daaronder en de knop met het puntenraster onderaan.
@@ -310,7 +315,7 @@ python3 -m http.server 8765 --directory ui
 ```
 
 Open dan `http://127.0.0.1:8765/index.html`. Met URL-parameters kies je een
-variant, bijvoorbeeld `?theme=glas&size=l&layout=bar&pos=left&popup=settings`;
+variant, bijvoorbeeld `?theme=glas&style=fluent&size=l&layout=bar&pos=left&popup=settings`;
 `?max=1` bootst een gemaximaliseerd venster na, `?badges` toont aandacht,
 voortgang en badges op app-knoppen, en `?extra` de balk van een ander scherm.
 
@@ -326,7 +331,8 @@ src-tauri/           Windows-kant (Rust, Tauri 2)
   src/shell.rs           open vensters volgen, activeren/minimaliseren/sluiten
   src/taskbar.rs         Windows-taakbalk verbergen en terugzetten
   src/appbar.rs          schermruimte reserveren
-  src/backdrop.rs        echte vervaging (acrylic) achter het glasthema
+  src/backdrop.rs        echte vervaging (acrylic) achter Glas, Fluent en Cupertino
+  src/look.rs            licht/donker en accentkleur van Windows
   src/icons.rs           app-iconen ophalen
   src/pins.rs            vastgemaakte apps uit Windows overnemen
   src/stats.rs           CPU, geheugen, accu, netwerk, volume
