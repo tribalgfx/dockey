@@ -898,7 +898,16 @@ function setStats(stats) {
 }
 
 const start = $('#start');
-start.innerHTML = glyph.start;
+// Een icoon per stijl; style.css toont het icoon van de gekozen stijl.
+start.innerHTML = [
+  ['dockey', glyph.start],
+  ['fluent', glyph.startFluent],
+  ['cupertino', glyph.startCupertino],
+  ['adwaita', glyph.startAdwaita],
+  ['breeze', glyph.startBreeze],
+]
+  .map(([style, svg]) => `<span class="start-glyph" data-for="${style}">${svg}</span>`)
+  .join('');
 start.dataset.popup = 'dock-menu';
 start.addEventListener('click', () => invoke('send_keys', { name: 'start' }));
 

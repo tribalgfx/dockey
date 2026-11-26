@@ -392,6 +392,17 @@ html.sorting .tile { transition: none; }
   background: var(--accent); box-shadow: 0 0 0 2px var(--bg-solid);
 }
 #start svg { width: calc(var(--icon) * .6); height: calc(var(--icon) * .6); }
+/* Het icoon van de gekozen stijl (dock.js zet ze er allemaal in). */
+.start-glyph { display: none; transition: transform .22s var(--spring); }
+html:not([data-style]) .start-glyph[data-for="dockey"],
+html[data-style="dockey"] .start-glyph[data-for="dockey"],
+html[data-style="fluent"] .start-glyph[data-for="fluent"],
+html[data-style="cupertino"] .start-glyph[data-for="cupertino"],
+html[data-style="adwaita"] .start-glyph[data-for="adwaita"],
+html[data-style="breeze"] .start-glyph[data-for="breeze"] { display: grid; }
+html[data-style="fluent"] #start, html[data-style="breeze"] #start { color: var(--accent); }
+html[data-style="fluent"] #start svg { width: calc(var(--icon) * .62); height: calc(var(--icon) * .62); }
+html[data-style="adwaita"] #start svg { width: calc(var(--icon) * .7); height: calc(var(--icon) * .7); }
 
 /* ---------------------------------------------- verticaal (links/rechts) -- */
 /* Zoals de dock van Ubuntu: apps bovenaan, widgets daaronder en de knop met
