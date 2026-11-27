@@ -189,7 +189,11 @@ blijven 90 dagen staan.
   de balk) en het menu van het tray-icoon **Bijwerken naar versie …**. Daar zie
   je wat er nieuw is en kies je **Nu bijwerken**: Dockey downloadt de
   installer, controleert hem met het SHA-256-controlegetal dat GitHub bij de
-  release vermeldt (klopt dat niet, dan wordt hij weggegooid), en start hem.
+  release vermeldt en met de handtekening ernaast
+  (`Dockey-Setup-<versie>.exe.sig`, gezet met een sleutel die niet op GitHub
+  staat), en start hem. Klopt een van beide niet, dan wordt er niets
+  geïnstalleerd. Een release zonder geldige handtekening wordt niet eens
+  aangeboden.
   De installer sluit Dockey netjes af, vervangt het programma en start Dockey
   daarna opnieuw; je instellingen blijven staan. Zonder je klik wordt er niets
   gedownload of geïnstalleerd. Het automatisch kijken zet je uit in
@@ -240,6 +244,21 @@ daar `artifacts\Dockey-Setup-<versie>.exe` van maken (ongeveer 3 MB). De
 versie komt uit `src-tauri\tauri.conf.json`; `artifacts\` staat in
 `.gitignore`. De Windows-build op GitHub maakt dezelfde installer bij elke
 push (het artifact `dockey-setup`).
+
+### Een release ondertekenen (beheerder)
+
+Dockey installeert alleen een update waarvan de installer ondertekend is met
+de privésleutel die hoort bij `src-tauri\update-key.pub`. Die sleutel staat
+buiten de repo (`%USERPROFILE%\.dockey\update-signing-key.json`), nooit op
+GitHub of in een CI-geheim; ondertekenen gebeurt dus lokaal:
+
+```powershell
+.\scripts\sign-installer.ps1 artifacts\Dockey-Setup-<versie>.exe
+```
+
+Zet het `Dockey-Setup-<versie>.exe.sig` dat dat oplevert naast de installer
+bij de release. Raak je de sleutel kwijt, dan kunnen geïnstalleerde exemplaren
+niet meer vanzelf bijwerken; bewaar dus een kopie op een veilige plek.
 
 ### Zelf bouwen (op Windows)
 
@@ -342,6 +361,8 @@ src-tauri/           Windows-kant (Rust, Tauri 2)
   src/update.rs          nieuwe versie zoeken, downloaden, controleren en installeren
   src/taskband.rs        aandacht, voortgang en badges op app-knoppen
   src/tray.rs            het systeemvak in de balk
+  update-key.pub         publieke sleutel waarmee update-installers ondertekend moeten zijn
+scripts/             build-installer.ps1 (installer), sign-installer.ps1 (handtekening bij een release)
 ```
 
 Het logo is een D met ezelsoren (een knipoog naar *Donkie*); het gat in de D

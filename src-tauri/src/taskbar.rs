@@ -124,6 +124,24 @@ pub fn restore() {
     let _ = std::fs::remove_file(state_file());
 }
 
+/// Voor de paniek-hook: zoals `restore`, maar zonder te wachten. Ging het mis
+/// terwijl de bewaarde stand vergrendeld was (bijv. midden in
+/// `remember_original`), dan zou `restore` eeuwig wachten en bleef de
+/// taakbalk weg; dan herstellen we vanaf schijf.
+pub fn restore_after_panic() {
+    use std::sync::TryLockError;
+    let orig = match ORIGINAL.try_lock() {
+        Ok(mut guard) => guard.take(),
+        Err(TryLockError::Poisoned(e)) => e.into_inner().take(),
+        Err(TryLockError::WouldBlock) => return restore_from_disk(),
+    };
+    if let Some(state) = orig {
+        set_state(state);
+        set_visible(true);
+    }
+    let _ = std::fs::remove_file(state_file());
+}
+
 /// Voor `dockey.exe --restore`: herstel zonder dat de app draait.
 pub fn restore_from_disk() {
     let state = std::fs::read_to_string(state_file()).ok().and_then(|s| s.trim().parse::<u32>().ok()).unwrap_or(0);

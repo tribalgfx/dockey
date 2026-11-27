@@ -189,8 +189,10 @@ run. These files can only be downloaded with a GitHub account and are kept for
   the Start button gets a dot, and **Update to version …** appears at the top
   of the bar menu (right-click the bar) and the tray icon's menu. There you see
   what's new and choose **Update now**: Dockey downloads the installer, checks
-  it against the SHA-256 checksum GitHub lists for the release (if it doesn't
-  match, the file is thrown away), and runs it. The installer closes Dockey
+  it against the SHA-256 checksum GitHub lists for the release and against
+  the signature next to it (`Dockey-Setup-<version>.exe.sig`, made with a key
+  that isn't on GitHub), and runs it. If either check fails, nothing is
+  installed. A release without a valid signature isn't offered at all. The installer closes Dockey
   cleanly, replaces the program and starts Dockey again; your settings stay.
   Nothing is downloaded or installed without your click. Automatic checking
   can be turned off in Settings → Updates; you can also check right away
@@ -241,6 +243,21 @@ turn it into `artifacts\Dockey-Setup-<version>.exe` (about 3 MB). The version
 comes from `src-tauri\tauri.conf.json`; `artifacts\` is in `.gitignore`. The
 Windows build on GitHub makes the same installer on every push (the
 `dockey-setup` artifact).
+
+### Signing a release (maintainer)
+
+Dockey only installs an update whose installer is signed with the private key
+that belongs to `src-tauri\update-key.pub`. That key lives outside the repo
+(`%USERPROFILE%\.dockey\update-signing-key.json`), never on GitHub or in a CI
+secret, so the signing happens locally:
+
+```powershell
+.\scripts\sign-installer.ps1 artifacts\Dockey-Setup-<version>.exe
+```
+
+Upload the resulting `Dockey-Setup-<version>.exe.sig` to the release next to
+the installer. Losing the key means installed copies can no longer update by
+themselves, so keep a backup in a safe place.
 
 ### Building it yourself (on Windows)
 
@@ -339,6 +356,8 @@ src-tauri/           Windows side (Rust, Tauri 2)
   src/update.rs          finding, downloading, checking and installing a new version
   src/taskband.rs        attention, progress and badges on app buttons
   src/tray.rs            the system tray in the bar
+  update-key.pub         public key that update installers must be signed with
+scripts/             build-installer.ps1 (installer), sign-installer.ps1 (release signature)
 ```
 
 The code comments are in Dutch.

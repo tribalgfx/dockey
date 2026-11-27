@@ -31,11 +31,22 @@ fn get(url: &str, insecure: bool) -> Result<ureq::Response, String> {
     })
 }
 
+/// Het hele antwoord, of `ERR_TOO_LARGE` als het groter is dan MAX_BYTES (een
+/// afgekapt antwoord zou een halve agenda of onleesbare JSON opleveren).
+fn read_body(response: ureq::Response) -> Result<Vec<u8>, String> {
+    let mut bytes = Vec::new();
+    response.into_reader().take(MAX_BYTES + 1).read_to_end(&mut bytes).map_err(|e| e.to_string())?;
+    if bytes.len() as u64 > MAX_BYTES {
+        return Err("ERR_TOO_LARGE".into());
+    }
+    Ok(bytes)
+}
+
 pub fn fetch(url: &str, insecure: bool) -> Result<String, String> {
-    let response = get(url, insecure)?;
-    let mut body = String::new();
-    response.into_reader().take(MAX_BYTES).read_to_string(&mut body).map_err(|e| e.to_string())?;
-    Ok(body)
+    let bytes = read_body(get(url, insecure)?)?;
+    // Niet-UTF-8 (bijv. een oude Latin-1-feed) niet weigeren: hooguit een
+    // enkel teken wordt dan een vervangingsteken.
+    Ok(String::from_utf8(bytes).unwrap_or_else(|e| String::from_utf8_lossy(e.as_bytes()).into_owned()))
 }
 
 /// Een afbeelding ophalen als data-URL (bijv. het icoon van een statuswidget).
@@ -43,8 +54,7 @@ pub fn fetch_image(url: &str, insecure: bool) -> Result<String, String> {
     use base64::Engine;
     let response = get(url, insecure)?;
     let declared = response.content_type().to_string();
-    let mut bytes = Vec::new();
-    response.into_reader().take(MAX_BYTES).read_to_end(&mut bytes).map_err(|e| e.to_string())?;
+    let bytes = read_body(response)?;
     let mime = if bytes.starts_with(&[0x89, b'P', b'N', b'G']) {
         "image/png"
     } else if bytes.starts_with(&[0xFF, 0xD8]) {

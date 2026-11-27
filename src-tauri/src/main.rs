@@ -49,6 +49,10 @@ struct Popup {
 
 struct AppState {
     config: Mutex<Config>,
+    /// Wie de configuratie wijzigt, houdt dit vast van inlezen tot en met
+    /// opslaan en melden (zie `change_config`). Los van `config`, zodat lezers
+    /// (ook de hoofdthread) nooit op schijfwerk of vensters hoeven te wachten.
+    config_writer: Mutex<()>,
     shell: Mutex<shell::Snapshot>,
     stats: Mutex<stats::Stats>,
     media: Mutex<Option<media::Media>>,
@@ -171,7 +175,7 @@ fn sync_docks(app: &AppHandle) -> bool {
             if let Ok(h) = win.hwnd() {
                 appbar::remove(h);
             }
-            backdrop::hide(&old.label);
+            backdrop::remove(&old.label);
             let _ = win.destroy();
         }
     }
@@ -225,11 +229,21 @@ fn apply_config(app: &AppHandle, cfg: &Config) {
     request_layout(app);
 }
 
-/// Bewaart een gewijzigde configuratie en vertelt het aan alle vensters.
-fn commit_config(app: &AppHandle, cfg: Config) {
-    *app.state::<AppState>().config.lock().unwrap() = cfg.clone();
+/// Wijzigt de configuratie, bewaart haar en vertelt het aan alle vensters.
+/// `change` geeft `false` als er niets te wijzigen viel. Wijzigingen lopen één
+/// voor één: twee tegelijk (bijv. vastmaken terwijl de instellingen opslaan)
+/// kunnen elkaar niet meer wegvagen, en op schijf staat altijd de nieuwste.
+fn change_config(app: &AppHandle, change: impl FnOnce(&mut Config) -> bool) -> Option<Config> {
+    let state = app.state::<AppState>();
+    let _writer = state.config_writer.lock().unwrap();
+    let mut cfg = state.config.lock().unwrap().clone();
+    if !change(&mut cfg) {
+        return None;
+    }
+    *state.config.lock().unwrap() = cfg.clone();
     cfg.save();
     let _ = app.emit("config", &cfg);
+    Some(cfg)
 }
 
 // ----------------------------------------------------------- commando's --
@@ -295,8 +309,12 @@ fn set_backdrop(app: AppHandle, window: tauri::WebviewWindow, rect: Option<backd
 
 #[tauri::command(async)]
 fn set_config(app: AppHandle, config: Config) {
-    commit_config(&app, config.clone());
-    apply_config(&app, &config);
+    if let Some(cfg) = change_config(&app, |c| {
+        *c = config;
+        true
+    }) {
+        apply_config(&app, &cfg);
+    }
 }
 
 #[tauri::command(async)]
@@ -321,43 +339,48 @@ fn pin(app: AppHandle, state: State<AppState>, key: String) {
     if group.launch.is_empty() {
         return;
     }
-    let mut cfg = state.config.lock().unwrap().clone();
-    if !cfg.pinned.iter().any(|p| p.key == key) {
+    change_config(&app, |cfg| {
+        if cfg.pinned.iter().any(|p| p.key == key) {
+            return false;
+        }
         cfg.pinned.push(Pinned { key, name: group.name, launch: group.launch });
-        commit_config(&app, cfg);
-    }
+        true
+    });
 }
 
 #[tauri::command(async)]
-fn unpin(app: AppHandle, state: State<AppState>, key: String) {
-    let mut cfg = state.config.lock().unwrap().clone();
-    cfg.pinned.retain(|p| p.key != key);
-    commit_config(&app, cfg);
+fn unpin(app: AppHandle, key: String) {
+    change_config(&app, |cfg| {
+        let before = cfg.pinned.len();
+        cfg.pinned.retain(|p| p.key != key);
+        cfg.pinned.len() != before
+    });
 }
 
 /// Verschuift een vastgemaakte app één plek naar links (-1) of rechts (1).
 #[tauri::command(async)]
-fn move_pin(app: AppHandle, state: State<AppState>, key: String, delta: i32) {
-    let mut cfg = state.config.lock().unwrap().clone();
-    let Some(i) = cfg.pinned.iter().position(|p| p.key == key) else { return };
-    let j = i as i32 + delta;
-    if j >= 0 && (j as usize) < cfg.pinned.len() {
+fn move_pin(app: AppHandle, key: String, delta: i32) {
+    change_config(&app, |cfg| {
+        let Some(i) = cfg.pinned.iter().position(|p| p.key == key) else { return false };
+        let j = i as i32 + delta;
+        if j < 0 || j as usize >= cfg.pinned.len() {
+            return false;
+        }
         cfg.pinned.swap(i, j as usize);
-        commit_config(&app, cfg);
-    }
+        true
+    });
 }
 
 /// Nieuwe volgorde van de vastgemaakte apps (na slepen in de balk). Apps die
 /// niet in `keys` staan, houden hun plek achteraan.
 #[tauri::command(async)]
-fn reorder_pins(app: AppHandle, state: State<AppState>, keys: Vec<String>) {
-    let mut cfg = state.config.lock().unwrap().clone();
-    let rank = |k: &str| keys.iter().position(|x| x == k).unwrap_or(usize::MAX);
-    let before: Vec<String> = cfg.pinned.iter().map(|p| p.key.clone()).collect();
-    cfg.pinned.sort_by_key(|p| rank(&p.key)); // stabiel: de rest blijft in volgorde
-    if cfg.pinned.iter().map(|p| &p.key).ne(before.iter()) {
-        commit_config(&app, cfg);
-    }
+fn reorder_pins(app: AppHandle, keys: Vec<String>) {
+    change_config(&app, |cfg| {
+        let rank = |k: &str| keys.iter().position(|x| x == k).unwrap_or(usize::MAX);
+        let before: Vec<String> = cfg.pinned.iter().map(|p| p.key.clone()).collect();
+        cfg.pinned.sort_by_key(|p| rank(&p.key)); // stabiel: de rest blijft in volgorde
+        cfg.pinned.iter().map(|p| &p.key).ne(before.iter())
+    });
 }
 
 #[tauri::command(async)]
@@ -724,10 +747,15 @@ fn shell_thread(app: AppHandle) {
 
     // Eerste start: neem de apps over die aan de Windows-taakbalk vastzitten.
     if !state.config.lock().unwrap().pins_imported {
-        let mut cfg = state.config.lock().unwrap().clone();
-        cfg.pinned = pins::import_windows_pins();
-        cfg.pins_imported = true;
-        commit_config(&app, cfg);
+        let imported = pins::import_windows_pins();
+        change_config(&app, |cfg| {
+            if cfg.pins_imported {
+                return false; // intussen al gedaan
+            }
+            cfg.pinned = imported;
+            cfg.pins_imported = true;
+            true
+        });
     }
 
     let mut tracker = shell::Tracker::new();
@@ -1018,13 +1046,14 @@ fn main() {
     // Ook bij een crash de taakbalk teruggeven.
     let default_hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
-        taskbar::restore();
+        taskbar::restore_after_panic();
         default_hook(info);
     }));
 
     config::migrate_from_lichtbalk();
     let state = AppState {
         config: Mutex::new(Config::load()),
+        config_writer: Mutex::default(),
         shell: Mutex::default(),
         stats: Mutex::default(),
         media: Mutex::default(),

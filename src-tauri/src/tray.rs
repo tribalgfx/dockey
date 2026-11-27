@@ -73,7 +73,11 @@ pub struct TrayItem {
 static APP: OnceLock<AppHandle> = OnceLock::new();
 static ICONS: Mutex<Vec<Icon>> = Mutex::new(Vec::new());
 static HWND_SELF: AtomicIsize = AtomicIsize::new(0);
+/// Er draait een systeemvak-thread (ook terwijl die nog opstart of afsluit).
 static RUNNING: AtomicBool = AtomicBool::new(false);
+/// Moet het systeemvak aan staan? Snel uit en weer aan, of aan en uit, mag de
+/// thread niet in de verkeerde stand achterlaten.
+static WANTED: AtomicBool = AtomicBool::new(false);
 static DIRTY: AtomicBool = AtomicBool::new(false);
 /// Schermrechthoek van het systeemvak in de balk (voor apps die vragen waar hun pictogram staat).
 static RECT: Mutex<Option<(i32, i32, i32, i32)>> = Mutex::new(None);
@@ -370,7 +374,21 @@ unsafe extern "system" fn wndproc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: 
     }
 }
 
+/// De systeemvak-thread. Wordt het systeemvak weer aangezet terwijl deze
+/// thread net afsluit, dan begint hij opnieuw (anders bleef het uit).
 fn run() {
+    loop {
+        let created = run_once();
+        RUNNING.store(false, Ordering::SeqCst);
+        if !created || !WANTED.load(Ordering::SeqCst) || RUNNING.swap(true, Ordering::SeqCst) {
+            break;
+        }
+    }
+}
+
+/// Eén keer het venster maken en berichten verwerken tot het dichtgaat.
+/// Geeft `false` als het venster niet gemaakt kon worden.
+fn run_once() -> bool {
     unsafe {
         let instance = GetModuleHandleW(PCWSTR::null()).map(|m| m.into()).ok();
         let class = WNDCLASSEXW {
@@ -398,19 +416,24 @@ fn run() {
             Ok(h) => h,
             Err(e) => {
                 log(&format!("systeemvak: venster maken mislukt: {e}"));
-                RUNNING.store(false, Ordering::SeqCst);
-                return;
+                return false;
             }
         };
         HWND_SELF.store(hwnd.0 as isize, Ordering::SeqCst);
-        let _ = SetWindowPos(hwnd, Some(HWND_TOPMOST), 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-        SetTimer(Some(hwnd), 1, 250, None);
-        broadcast_taskbar_created();
-        // Voortgang en badges van apps (ITaskbarList3) komen via ons venster
-        // binnen (zie taskband.rs); vraag de apps die al draaien ze opnieuw door
-        // te geven.
-        crate::taskband::attach(hwnd);
-        crate::taskband::announce(&crate::shell::app_windows());
+        // Intussen alweer uitgezet (stop() vond nog geen venster om te sluiten)?
+        // De berichtenlus hieronder ruimt dan op (WM_DESTROY → WM_QUIT).
+        if !WANTED.load(Ordering::SeqCst) {
+            let _ = DestroyWindow(hwnd);
+        } else {
+            let _ = SetWindowPos(hwnd, Some(HWND_TOPMOST), 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+            SetTimer(Some(hwnd), 1, 250, None);
+            broadcast_taskbar_created();
+            // Voortgang en badges van apps (ITaskbarList3) komen via ons venster
+            // binnen (zie taskband.rs); vraag de apps die al draaien ze opnieuw door
+            // te geven.
+            crate::taskband::attach(hwnd);
+            crate::taskband::announce(&crate::shell::app_windows());
+        }
 
         let mut msg = MSG::default();
         while GetMessageW(&mut msg, None, 0, 0).as_bool() {
@@ -420,12 +443,12 @@ fn run() {
 
         HWND_SELF.store(0, Ordering::SeqCst);
         ICONS.lock().unwrap().clear();
-        RUNNING.store(false, Ordering::SeqCst);
         // Alles staat ook al op de taakbalk van Windows; dit is voor de zekerheid.
         broadcast_taskbar_created();
         if let Some(app) = APP.get() {
             let _ = app.emit("tray", Vec::<TrayItem>::new());
         }
+        true
     }
 }
 
@@ -438,6 +461,7 @@ pub fn init(app: AppHandle) {
 /// Systeemvak aan- of uitzetten (de instelling "Systeemvak" bij de widgets).
 pub fn set_enabled(on: bool) {
     if on {
+        WANTED.store(true, Ordering::SeqCst);
         if !RUNNING.swap(true, Ordering::SeqCst) {
             std::thread::Builder::new().name("systeemvak".into()).spawn(run).ok();
         }
@@ -448,6 +472,7 @@ pub fn set_enabled(on: bool) {
 
 /// Stopt het systeemvak en wacht tot het venster weg is (bij afsluiten).
 pub fn stop() {
+    WANTED.store(false, Ordering::SeqCst);
     if let Some(h) = own_hwnd() {
         let mut result = 0usize;
         unsafe {

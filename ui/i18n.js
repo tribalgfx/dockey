@@ -243,12 +243,14 @@ const nl = {
   'transparency.hint': 'Hoe doorzichtig de balk is; 0% is zoals het thema.',
   'err.updateHash': 'De download klopt niet met het controlegetal van GitHub en is weggegooid.',
   'err.updateSize': 'De download is niet compleet.',
+  'err.updateSignature': 'De handtekening van de installer klopt niet; de update is niet gestart.',
   'err.updateNone': 'Er staat geen update klaar.',
 
   // Foutcodes van de backend (net.rs)
   'err.scheme': 'Alleen adressen met http:// of https://',
   'err.http': (code) => `Het adres antwoordt met HTTP ${code}`,
   'err.notImage': 'Geen afbeelding',
+  'err.tooLarge': 'Het antwoord is te groot (meer dan 8 MB)',
 };
 
 const en = {
@@ -481,11 +483,13 @@ const en = {
   'transparency.hint': 'How see-through the bar is; 0% is as the theme.',
   'err.updateHash': "The download doesn't match GitHub's checksum and was discarded.",
   'err.updateSize': 'The download is incomplete.',
+  'err.updateSignature': "The installer's signature doesn't check out; the update wasn't started.",
   'err.updateNone': 'No update is available.',
 
   'err.scheme': 'Only http:// or https:// addresses',
   'err.http': (code) => `The address responds with HTTP ${code}`,
   'err.notImage': 'Not an image',
+  'err.tooLarge': 'The response is too large (over 8 MB)',
 };
 
 const STRINGS = { nl, en };
@@ -528,8 +532,10 @@ export function errorText(err) {
   const text = String(err?.message ?? err);
   if (text === 'ERR_SCHEME') return t('err.scheme');
   if (text === 'ERR_NOT_IMAGE') return t('err.notImage');
+  if (text === 'ERR_TOO_LARGE') return t('err.tooLarge');
   if (text === 'ERR_UPDATE_HASH') return t('err.updateHash');
   if (text === 'ERR_UPDATE_SIZE') return t('err.updateSize');
+  if (text === 'ERR_UPDATE_SIGNATURE') return t('err.updateSignature');
   if (text === 'ERR_UPDATE_NONE') return t('err.updateNone');
   const http = /^ERR_HTTP:(\d+)$/.exec(text);
   return http ? t('err.http', http[1]) : text;

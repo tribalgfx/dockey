@@ -133,6 +133,19 @@ pub fn hide(label: &str) {
     }
 }
 
+/// Ruimt het achtergrondvenster van een venster op dat verdwijnt (een balk
+/// voor een scherm dat weg is). Kan vanaf elke thread: alleen de eigen thread
+/// mag een venster vernietigen, dus vragen we het met WM_CLOSE (dat
+/// DefWindowProc met DestroyWindow afhandelt).
+pub fn remove(label: &str) {
+    let hwnd = surfaces().lock().unwrap().remove(label).map(|s| s.hwnd).unwrap_or(0);
+    if hwnd != 0 {
+        unsafe {
+            let _ = PostMessageW(Some(HWND(hwnd as *mut c_void)), WM_CLOSE, WPARAM(0), LPARAM(0));
+        }
+    }
+}
+
 /// Zet het achtergrondvenster op de plek van het glasvlak, direct onder het
 /// venster zelf; of verbergt het als het venster verborgen is of geen
 /// vervaging wil. Moet op de hoofdthread draaien.

@@ -192,8 +192,12 @@ unsafe fn bitmap_pixels(hbmp: HBITMAP) -> Option<(i32, i32, Vec<u8>)> {
     if GetObjectW(hbmp.into(), size_of::<BITMAP>() as i32, Some(&mut bm as *mut BITMAP as *mut c_void)) == 0 {
         return None;
     }
-    let (w, h) = (bm.bmWidth, bm.bmHeight.abs());
-    if w <= 0 || h <= 0 {
+    // Iconen komen ook van andere processen (systeemvak, badges). Een absurd
+    // groot exemplaar weigeren: dan kan `w * h * 4` niet overlopen en schrijft
+    // GetDIBits nooit buiten de buffer.
+    const MAX_SIDE: i32 = 2048;
+    let (w, h) = (bm.bmWidth, bm.bmHeight.checked_abs()?);
+    if !(1..=MAX_SIDE).contains(&w) || !(1..=MAX_SIDE).contains(&h) {
         return None;
     }
     let mut info = BITMAPINFO {
@@ -207,7 +211,7 @@ unsafe fn bitmap_pixels(hbmp: HBITMAP) -> Option<(i32, i32, Vec<u8>)> {
         },
         ..Default::default()
     };
-    let mut px = vec![0u8; (w * h * 4) as usize];
+    let mut px = vec![0u8; w as usize * h as usize * 4];
     let dc = GetDC(None);
     let rows = GetDIBits(dc, hbmp, 0, h as u32, Some(px.as_mut_ptr() as *mut c_void), &mut info, DIB_RGB_COLORS);
     ReleaseDC(None, dc);
